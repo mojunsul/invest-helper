@@ -16,7 +16,7 @@ def failure_verdict(reason: Literal["NO_FINANCIALS","FETCH_FAILED"]) -> Verdict
 def is_sample_short(n: int) -> bool                              # n < SAMPLE_MIN (D9가 "표본 부족" 표기에 사용)
 ```
 
-- `raw` 키(전부 `float|int|None`): `revenue, op_profit, net_income, assets, equity, debt_ratio, mkt_cap`. get_financials `data`의 원천값 그대로. **시가총액 출처 = get_financials `data.mkt_cap`**; 이것이 None이면 D8이 후보 행(`find_stock_candidates.mkt_cap`)으로 채운 뒤 넘긴다(채움은 D8 책임, D6는 `raw["mkt_cap"]`만 본다).
+- `raw` 키(전부 `float|int|None`): `revenue, op_profit, net_income, assets, equity, debt_ratio, mkt_cap`. get_financials `data`의 원천값 그대로. **시가총액 출처 = get_financials `data.mkt_cap`**; D4는 시총을 부가·best-effort로 두므로 None일 수 있다(주가 API 실패·없음). **screen**: None이면 D8이 후보 행(`find_stock_candidates.mkt_cap`, D3가 항상 양의 정수 보장)으로 채운 뒤 넘긴다(채움은 D8 책임, D6는 `raw["mkt_cap"]`만 본다). **lookup**: 후보 행이 없으므로 채우지 않으며 PER/PBR/PSR은 `NO_MARKET_CAP`으로 안내된다. D8은 `data`에서 위 7키만 `raw`로 넘기면 된다(`code`·`fiscal_period`는 별도 인자/무시).
 - 단위: 금액 원천값(revenue~equity, mkt_cap)은 **서로 같은 통화 단위**여야 한다(D4가 보장, 가정). D6는 단위 변환 안 함. 비율은 분자·분모 단위가 상쇄되어 무관.
 - `compute_metric_row`: `values`에 원천 5개(revenue/op_profit/net_income/assets/equity)와 mkt_cap, Metric 7종을 채움(원천 `debt_ratio`는 `DEBT_RATIO` 키로만 보존). `fiscal_period/actual_basis/estimated`는 **가공 없이 그대로 복사**(get_financials `data.fiscal_period`, `meta.actual_basis`, `meta.estimated`를 D8이 전달). get_financials 실패 종목은 MetricRow를 만들지 않고 `failure_verdict`만 쓴다(D8).
 - `industry_avg_per`: 입력은 후보 집합 중 재무 조회에 성공한 종목들의 MetricRow. 결과를 D8이 `state["industry_avg"]["PER"]`에 저장.
@@ -99,10 +99,21 @@ def is_sample_short(n: int) -> bool                              # n < SAMPLE_MI
 - 표시용 반올림·"표본 부족"/"후보 집합 기준"/기간 문구: D9(반올림 자릿수 D9). 단위 일치 보장: D4. mkt_cap 보충·ReasonCode 매핑 호출: D8.
 - 가정: ① 재무는 연간 단일 기준이라 ROE/ROA 연환산 없음(DESIGN §3 실호출 결과) ② `estimated` 판정은 D4/ToolMeta가 이미 확정 ③ NaN/inf/bool을 None과 동일 취급하는 것과 불량 Constraint의 `NO_FINANCIALS` 대체는 D0 명시가 없는 D6 판단 ④ 기대값 정확 비교는 정수 입력 케이스에서만 보장(실수 입력은 `pytest.approx`).
 
+## 구현 시 확인 항목
+
+- 실호출에서 `fnclDebtRto`가 연결·별도 행 모두에 있는지(D4 §8)에 따라 DEBT_RATIO None 빈도가 달라진다(UNDECIDABLE 증가). 금융업(H7)은 원천값 None이 많을 수 있어 UNDECIDABLE이 많이 나올 수 있다.
+- 시총 기준일(최근 영업일)과 재무 연도 불일치는 의도된 단순화(D4 §8); PER/PBR/PSR 표기 시 기간 문구는 D9.
+- D5(search_disclosures)는 D6 입력/출력에 영향 없음(공시는 판정 대상 아님, DART 키는 D8 `requires_keys` 점검에서만 관여).
+
+## 변경 이력 (정합 점검 회차)
+
+- §1 raw: 시총 None 처리를 screen(D8이 D3 후보 mkt_cap으로 보충)/lookup(`NO_MARKET_CAP`)으로 구분 명시, D8이 넘길 7키 명시.
+- 요청 3: D4 답변으로 해결 표기. 그 외 D4 필드·D3 후보 필드·D5·requires_keys·NO_FINANCIALS 매핑·재계획 규칙과의 불일치 없음 → 변경 없음. D3 `MAX_LIMIT`은 D9 소관으로 D6와 무관.
+
 ## 상위 계약에 대한 요청
 
 1. **ReasonCode에 "원천 재무값 None" 전용 코드가 없다.** 현재 `NO_FINANCIALS`(ErrorCode와 같은 이름)를 재사용한다. 의미 혼선이 우려되면 D0에 `MISSING_SOURCE_VALUE` 추가를 요청(미반영이면 현 매핑 유지).
 2. **n=1~2 표본에서 PER<=산업평균은 자기 자신과의 비교가 되어 사실상 무의미**하다. D0 규칙대로 판정하지만, 원하면 n<3을 `INDUSTRY_AVG_UNAVAILABLE`로 취급하도록 D0 변경 필요(승인 사항).
-3. get_financials 출력에 부채총계가 없어 DEBT_RATIO를 API값에 의존한다. D4가 `debt_ratio` None을 줄 수 있음을 계약에 명시해 달라(D4 확인 사항).
+3. (해결) D4가 `debt_ratio`는 API 값만이며 None 가능으로 확정(D4 §3, 계산 대체 없음). D6 §2 규칙(None→`NO_FINANCIALS`→UNDECIDABLE)과 일치, 추가 요청 없음.
 4. DEBT_RATIO는 equity ≤ 0이면 API값이 있어도 판단불가(`NEGATIVE_EQUITY`)로 처리한다. DESIGN §5에 없는 D6 추가 규칙이므로 승인 필요(PBR/ROE와의 일관성 목적).
 5. D0 불변식을 어긴 Constraint(값/ref 불량)에 해당하는 ReasonCode가 없어 `NO_FINANCIALS`로 대체한다. 전용 코드(예: `INVALID_CONSTRAINT`)가 필요하면 D0 추가 요청.
