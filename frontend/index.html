@@ -11,23 +11,30 @@
     <h1>투자 도우미</h1>
     <nav>
       <a href="reports.html">저장된 리포트</a>
-      <button type="button" id="new-chat">새 대화</button>
+      <button type="button" id="new-chat">새 분석</button>
     </nav>
   </header>
-  <div id="banner" role="alert" hidden></div>
-  <main>
-    <ol id="log" role="log" aria-live="polite" aria-label="대화"></ol>
-    <div id="status" aria-live="polite"></div>
-  </main>
-  <form id="form">
-    <label for="msg" class="sr-only">메시지</label>
+  <form id="form" class="search">
+    <label for="msg" class="sr-only">분석할 질문</label>
     <div class="composer">
-      <textarea id="msg" maxlength="2000" rows="2" required aria-describedby="help"
-                placeholder="예: 반도체 중 ROE 10% 이상인 종목"></textarea>
-      <button type="submit" id="send">전송</button>
+      <textarea id="msg" maxlength="2000" rows="1" required aria-describedby="help"
+                placeholder="예: 반도체 중 ROE 10% 이상, PER 산업 평균 이하"></textarea>
+      <button type="submit" id="send">분석</button>
     </div>
-    <p id="help">Enter 전송 · Shift+Enter 줄바꿈 · 새로고침하면 화면 기록은 지워지지만 맥락은 서버가 기억합니다</p>
+    <p id="help">Enter 분석 · Shift+Enter 줄바꿈 · 조건 칩을 누르면 변경 문장이 채워집니다</p>
+    <div class="chips-wrap"><span id="chips-label">현재 조건</span><ul id="chips" aria-labelledby="chips-label"></ul></div>
   </form>
+  <div class="layout">
+    <aside id="side" aria-label="실행 상태">
+      <div id="banner" role="alert" hidden></div>
+      <div id="status" aria-live="polite"></div>
+      <details id="side-panel" open><summary id="side-sum">실행 과정</summary><ol id="timeline" class="timeline"></ol></details>
+    </aside>
+    <main>
+      <p id="empty" class="empty">질문을 입력하면 분석 결과가 여기에 쌓입니다.</p>
+      <ol id="log" aria-label="분석 실행 기록"></ol>
+    </main>
+  </div>
   <footer id="disclaimer">투자 권유가 아니며 전문가 조언을 대신하지 않습니다.</footer>
   <script src="common.js"></script>
   <script src="chat.js"></script>

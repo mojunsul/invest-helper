@@ -105,3 +105,103 @@ test("buildSaveBody", () => {
   assert.deepStrictEqual(T.buildSaveBody("s", "005930", "  ", ""), { session_id: "s", stock_code: "005930" });
   assert.deepStrictEqual(T.buildSaveBody("s", "005930", " n ", "m"), { session_id: "s", stock_code: "005930", name: "n", memo: "m" });
 });
+
+// ---- D14c ----
+test("fmtMetric", () => {
+  assert.strictEqual(T.fmtMetric("ROE", 12.1), "12.10%");
+  assert.strictEqual(T.fmtMetric("PER", 9.8), "9.80배");
+  assert.strictEqual(T.fmtMetric("PER", null), "-");
+  assert.strictEqual(T.fmtMetric("ROE", -3.456), "-3.46%");
+});
+
+test("condChips", () => {
+  assert.deepStrictEqual(T.condChips(null), []);
+  assert.deepStrictEqual(T.condChips({ industry: null, constraints: [], pending_metrics: [] }), []);
+  const cs = T.condChips({ industry: "반도체", market: null, base_date: "2025-12-31", want_disclosures: true,
+    constraints: [{ metric: "ROE", op: ">=", value: 10, ref: null }, { metric: "PER", op: "<=", value: null, ref: "industry_avg" }],
+    pending_metrics: ["OPM"] });
+  assert.deepStrictEqual(cs.map((c) => c.label), ["산업 반도체", "시장 전체", "기준일 2025-12-31", "ROE ≥ 10%",
+    "PER ≤ 산업 평균", "영업이익률 기준값 필요", "공시 포함"]);
+  assert.strictEqual(cs[cs.length - 1].prefill, null);
+  cs.forEach((c) => assert.ok(!/\d/.test(c.prefill || "")));
+  assert.strictEqual(T.condChips({ industry: "a", market: "KOSPI", constraints: [], pending_metrics: [] })[1].label, "시장 KOSPI");
+});
+
+test("groupVerdicts", () => {
+  const g = T.groupVerdicts([{ status: "FAIL", stock_code: "a" }, { status: "PASS", stock_code: "b" },
+    { status: "FAIL", stock_code: "c" }, { status: "??" }]);
+  assert.deepStrictEqual(g.FAIL.map((v) => v.stock_code), ["a", "c"]);
+  assert.strictEqual(g.PASS.length, 1);
+  assert.deepStrictEqual(T.groupVerdicts("x"), { PASS: [], FAIL: [], UNDECIDABLE: [] });
+});
+
+test("viewKind", () => {
+  const v = [{ status: "PASS" }];
+  assert.strictEqual(T.viewKind({ status: "asked", intent: "screen", verdicts: v }), "text");
+  assert.strictEqual(T.viewKind({ status: "error", intent: "screen", verdicts: v }), "text");
+  assert.strictEqual(T.viewKind({ status: "answered", intent: "screen", verdicts: v }), "table");
+  assert.strictEqual(T.viewKind({ status: "limit", intent: "refine", verdicts: v }), "table");
+  assert.strictEqual(T.viewKind({ status: "answered", intent: "screen", verdicts: [] }), "text");
+  assert.strictEqual(T.viewKind({ status: "answered", intent: "lookup", metrics: { a: {} } }), "metric");
+  assert.strictEqual(T.viewKind({ status: "answered", intent: "lookup", metrics: {} }), "text");
+  assert.strictEqual(T.viewKind({ status: "answered", intent: "filing_qa", evidence: [{}] }), "evidence");
+  assert.strictEqual(T.viewKind({ status: "answered", intent: "filing_qa", evidence: [] }), "text");
+  assert.strictEqual(T.viewKind({ status: "answered", verdicts: v }), "text");
+  assert.strictEqual(T.viewKind({ status: "answered", intent: "chitchat" }), "text");
+  assert.strictEqual(T.viewKind(null), "text");
+  for (const k of ["screen", "refine", "lookup", "report_save", "chitchat", "filing_qa"]) assert.ok(T.INTENT_TEXT[k], k);
+});
+
+test("headline", () => {
+  assert.strictEqual(T.headline("a b\n\nc"), "a b");
+  assert.strictEqual(T.headline(""), "");
+  assert.strictEqual(T.headline(null), "");
+});
+
+test("avgText", () => {
+  assert.strictEqual(T.avgText({}), null);
+  assert.match(T.avgText({ PER: { value: 14.2, n: 10 } }), /14\.20배 \(n=10/);
+  assert.match(T.avgText({ PER: { value: null, n: 0 } }), /산출 불가/);
+  assert.match(T.avgText({ PER: { value: 9, n: 2 } }), /표본 부족/);
+  assert.ok(!/표본 부족/.test(T.avgText({ PER: { value: 9, n: 3 } })));
+});
+
+test("statusLine", () => {
+  const t = { status: "answered", intent: "screen", verdicts: [{ status: "PASS" }, { status: "FAIL" }, { status: "UNDECIDABLE" }] };
+  assert.strictEqual(T.statusLine(t), "분석 완료 — 충족 1 · 불충족 1 · 판단불가 1");
+  assert.strictEqual(T.statusLine({ status: "answered", intent: "chitchat" }), "분석 완료");
+  assert.strictEqual(T.statusLine({ status: "asked" }), "추가 정보가 필요합니다");
+  assert.strictEqual(T.statusLine({ status: "limit" }), "조건을 충족한 종목이 없습니다");
+  assert.strictEqual(T.statusLine({ status: "error" }), "처리하지 못했습니다");
+});
+
+test("tableModel", () => {
+  const res = { status: "answered", intent: "screen", saveable: [{ stock_code: "A" }, { stock_code: "B" }],
+    conditions: { want_disclosures: true, constraints: [{ metric: "ROE" }, { metric: "PER" }, { metric: "ROE" }] },
+    verdicts: [
+      { stock_code: "A", stock_name: "가", status: "PASS", reasons: [], failed: [] },
+      { stock_code: "B", stock_name: "나", status: "FAIL", reasons: ["THRESHOLD_NOT_MET", "NO_MARKET_CAP"], failed: ["ROE"] },
+      { stock_code: "C", stock_name: "다", status: "UNDECIDABLE", reasons: ["NO_FINANCIALS", "ZZZ"], failed: [] }],
+    metrics: { A: { values: { ROE: 12.1, PER: 9.8 }, fiscal_period: "FY2025", estimated: true },
+               B: { values: { ROE: 3, PER: 8 }, fiscal_period: "FY2025" } },
+    disclosures: { A: [{ date: "2025-01-01", title: "t", url: "https://d.com/x" }, { date: "d", title: "bad", url: "javascript:x" }] } };
+  const m = T.tableModel(res);
+  assert.deepStrictEqual(m.cols, ["ROE", "PER"]);
+  assert.strictEqual(m.estimated, true);
+  const [p, f, u] = m.groups;
+  assert.strictEqual(p.rows[0].basis, "FY2025*");
+  assert.deepStrictEqual(p.rows[0].cells, [{ text: "12.10%", miss: false }, { text: "9.80배", miss: false }]);
+  assert.strictEqual(p.rows[0].saveable, true);
+  assert.strictEqual(p.rows[0].disc[0].href, "https://d.com/x");
+  assert.strictEqual(p.rows[0].disc[1].href, null);
+  assert.deepStrictEqual(f.rows[0].cells[0], { text: "3.00% ✗", miss: true });
+  assert.strictEqual(f.rows[0].cells[1].miss, false);
+  assert.strictEqual(f.rows[0].saveable, false);
+  assert.strictEqual(f.rows[0].reason, "ROE 미충족 (시가총액 확인 불가)");
+  assert.strictEqual(u.rows[0].reason, "재무정보 없음, ZZZ");
+  assert.deepStrictEqual(u.rows[0].cells.map((c) => c.text), ["-", "-"]);
+  assert.strictEqual(u.rows[0].basis, "-");
+  assert.strictEqual(T.tableModel({ ...res, conditions: { constraints: [] } }).groups[0].rows[0].disc, null);
+  // limit 카드는 이전 턴 draft 오인 방지로 저장 불가
+  assert.strictEqual(T.tableModel({ ...res, status: "limit" }).groups[0].rows[0].saveable, false);
+});

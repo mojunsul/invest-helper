@@ -27,7 +27,8 @@ from backend.tools import stock_candidates as sc
 SECRET = "E2E_SECRET_KEY"
 KEYS = Settings(DATA_GO_KR_KEY=SECRET, DART_API_KEY=SECRET + "2", GMS_API_KEY=SECRET + "3", REPLAN_MAX=3)
 RESP_KEYS = {"answer", "status", "verdicts", "industry_avg", "steps", "tool_calls", "replans",
-             "disclaimer", "missing_api_key", "saveable"}
+             "disclaimer", "missing_api_key", "saveable", "intent", "conditions", "metrics", "disclosures",
+             "evidence"}
 NET: list = []  # 네트워크 가드 발동 기록(AssertionError는 Tool 래퍼가 삼키므로 별도 기록)
 
 # code: (이름, 시장, 시총, 순이익, 자본, 부채비율, induty_code). 순이익/자본이 None이면 재무 응답 없음
@@ -257,6 +258,7 @@ def test_req1_screen_answered(c, w):
     assert w.summary in b["answer"] and llm_decisions(c, "summary") == ["llm"]
     assert b["answer"].endswith(respond.DISCLAIMER)
     assert [s["stock_code"] for s in b["saveable"]] == ["000001", "000004"] and b["missing_api_key"] is False
+    assert b["intent"] == "screen" and {"000001", "000004"} <= set(b["metrics"]) and b["evidence"] == []
     assert [e["payload"]["status"] for e in log_events(c) if e["type"] == "final"] == ["answered"]
 
 

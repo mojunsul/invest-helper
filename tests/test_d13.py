@@ -58,6 +58,8 @@ STATE = {"status": "answered", "answer": "본문\n\n" + respond.DISCLAIMER,
                       "000660": {"status": "FAIL", "reasons": ["BELOW_MIN"], "failed": ["PER"]}},
          "industry_avg": {"PER": {"value": 9.0, "n": 3}},
          "replan_log": [{"count": 1, "trigger": "no_pass", "change": "market_expand"}],
+         "intent": "screen", "conditions": {"industry": "반도체", "constraints": []},
+         "metrics": {"005930": {"values": {"PER": 9.8}}}, "disclosures": {},
          "errors": [], "report_draft": {"005930": {"stock_code": "005930", "stock_name": "삼성전자", "metrics": {}}}}
 
 
@@ -116,7 +118,8 @@ def test_chat_ok(client, monkeypatch):
     assert r.status_code == 200 and calls == [(SID, "안녕")]
     b = r.json()
     assert set(b) == {"answer", "status", "verdicts", "industry_avg", "steps", "tool_calls", "replans",
-                      "disclaimer", "missing_api_key", "saveable"}
+                      "disclaimer", "missing_api_key", "saveable", "intent", "conditions", "metrics", "disclosures",
+                      "evidence"}
     assert b["disclaimer"] == respond.DISCLAIMER and b["status"] == "answered"
     assert b["verdicts"][0] == {"stock_code": "005930", "stock_name": "삼성전자", "status": "PASS",
                                 "reasons": [], "failed": []}
@@ -124,6 +127,8 @@ def test_chat_ok(client, monkeypatch):
     assert b["replans"] == STATE["replan_log"] and b["industry_avg"] == STATE["industry_avg"]
     assert b["saveable"] == [{"stock_code": "005930", "stock_name": "삼성전자"}]
     assert b["missing_api_key"] is False
+    assert (b["intent"], b["conditions"], b["metrics"], b["disclosures"], b["evidence"]) == (
+        "screen", STATE["conditions"], STATE["metrics"], {}, [])
     assert run_logs() == ["stage_start", "final"]  # final 정확히 1건
 
 
@@ -140,6 +145,7 @@ def test_chat_exception(client, monkeypatch):
     assert r.status_code == 200 and b["status"] == "error" and "SECRET" not in r.text
     assert b["answer"] == "요청을 처리하지 못했습니다.\n\n" + respond.DISCLAIMER
     assert b["verdicts"] == [] and b["saveable"] == [] and b["steps"][0]["stage"] == "analyze"
+    assert (b["intent"], b["conditions"], b["metrics"], b["disclosures"], b["evidence"]) == (None, None, {}, {}, [])
     assert run_logs().count("final") == 1
     assert memory.get_report_draft(SID, "005930") is None
     mock_turn(monkeypatch)

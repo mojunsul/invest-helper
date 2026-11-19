@@ -25,7 +25,7 @@ invest-helper/
 │  │  ├─ bus.py               # publish(event) / subscribe(fn), 구독자 없어도 무해
 │  │  └─ logger_agent.py      # 구독 → SQLite 추가 저장 (LLM 미사용)
 │  └─ db/ sqlite.py           # reports, run_logs
-├─ frontend/  index.html(대화)  reports.html(관리)  *.js
+├─ frontend/  index.html(분석 대시보드 = 대화 화면)  reports.html(관리)  *.js
 ├─ scripts/   build_filing_index.py  # 심화 F3022: 공시 원문 오프라인 수집·색인(chromadb)
 ├─ .env.example
 └─ README.md                  # 실행법, 외부 API 출처·이용조건, 구현 범위
@@ -166,7 +166,7 @@ run_logs(id, session_id, seq, ts, type, payload_json)
 
 | 메서드 경로 | 요청 | 응답 |
 |---|---|---|
-| `POST /api/chat` | `{session_id, message}` | `{answer, status, verdicts[], industry_avg, steps[], tool_calls[], replans[], disclaimer}` |
+| `POST /api/chat` | `{session_id, message}` | `{answer, status, verdicts[], industry_avg, steps[], tool_calls[], replans[], disclaimer, missing_api_key, saveable[], intent, conditions, metrics, disclosures, evidence}` (`intent`~`evidence`는 표시용이며 저장 요청에 포함하지 않는다. 리포트 저장은 서버 draft 기준) |
 | `GET /api/reports` | – | `[ReportSummary]` |
 | `GET /api/reports/{id}` | – | `Report` |
 | `POST /api/reports` | `{session_id, stock_code, name?, memo?}` (채팅 결과 draft를 서버가 조회) | `{id, duplicate_of:[]}` |
@@ -178,7 +178,7 @@ run_logs(id, session_id, seq, ts, type, payload_json)
 
 - 로그 수정 엔드포인트 없음. 오류 응답은 `{code, message}`만, 스택·키 비노출(NF3002).
 - 리포트 저장 시 클라이언트가 지표를 보내지 않고 서버가 세션의 draft를 읽는다 → 모델·클라이언트가 값을 조작/지어내지 못함.
-- 화면: `index.html`(대화 + 단계/Tool 이력 타임라인, 재계획 구분 표시, 키 누락 안내), `reports.html`(목록·수정·삭제).
+- 화면: `index.html`(검색형 대시보드: 자연어 입력·조건 칩·의도별 실행 카드(결과 표/지표/공시 근거)·사이드 실행 타임라인(재계획 구분)·처리 중·키 누락 안내), `reports.html`(목록·수정·삭제).
 
 ## 10. 대표 요청 추적 (설계 시험용)
 

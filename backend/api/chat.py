@@ -60,7 +60,8 @@ def build_response(st: dict, evs: list[Event], failed: bool) -> dict:
     if failed:
         return {"answer": _ERR_ANSWER, "status": "error", "verdicts": [], "industry_avg": {}, "steps": steps,
                 "tool_calls": calls, "replans": [], "disclaimer": DISCLAIMER, "missing_api_key": False,
-                "saveable": []}
+                "saveable": [], "intent": None, "conditions": None, "metrics": {}, "disclosures": {},
+                "evidence": []}
     names = {c.get("code"): c.get("name") for c in st.get("candidates") or []}
     verdicts = [{"stock_code": c, "stock_name": names.get(c) or c, "status": v["status"],
                  "reasons": v.get("reasons", []), "failed": v.get("failed", [])}
@@ -72,7 +73,9 @@ def build_response(st: dict, evs: list[Event], failed: bool) -> dict:
             "tool_calls": calls, "replans": [dict(r) for r in st.get("replan_log") or []],
             "disclaimer": DISCLAIMER,
             "missing_api_key": any(e.get("code") == "MISSING_API_KEY" for e in st.get("errors") or []),
-            "saveable": saveable}
+            "saveable": saveable, "intent": st.get("intent"), "conditions": st.get("conditions"),
+            "metrics": st.get("metrics") or {}, "disclosures": st.get("disclosures") or {},
+            "evidence": st.get("filing_hits") or []}
 
 
 @router.post("")
