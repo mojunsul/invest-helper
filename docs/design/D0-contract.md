@@ -1,6 +1,6 @@
 # D0 공통 계약
 
-기준: DESIGN.md §2,3,4,5,6,7,10. 이후 단위(D1~D15)는 이 문서의 이름·타입만 참조한다. 의사코드는 Pydantic v2 / TypedDict 수준이며 구현 아님.
+기준: DESIGN.md §2,3,4,5,6,7,10. 이후 단위(D1~D17)는 이 문서의 이름·타입만 참조한다. 의사코드는 Pydantic v2 / TypedDict 수준이며 구현 아님.
 
 ## 1. ToolResult (`backend/tools/base.py`)
 
@@ -39,7 +39,7 @@ FATAL_CODES = {"MISSING_API_KEY"}      # 어느 Tool에서 나오든 즉시 종�
 | INVALID_INPUT / API_ERROR / RATE_LIMIT / TIMEOUT | 공통 | N | 후보 조회에서 나오면 §4 규칙 2(error). 종목 단위에서는 UNDECIDABLE(`FETCH_FAILED`)이고 재계획 트리거 아님 |
 | NO_RESULT | candidates, disclosures | N | candidates만 재계획 대상(§4 규칙 3). disclosures는 "공시 없음" 표기 |
 | NO_FINANCIALS | financials | N | 해당 종목 UNDECIDABLE |
-| NO_INDEX | search_filing_text(선택 F3022) | N | 필수 범위 밖, 코드만 예약 |
+| NO_INDEX | search_filing_text(심화 F3022) | N | 색인 없음(전체·지정 종목·임베딩 불일치). 비캐시. respond가 `[NO_INDEX] … 아직 모으지 못했습니다` 고정 형식, `status="error"`(D17 §8) |
 
 `NO_REPLAN_CODES` 상수는 두지 않는다. 그 역할(재계획 금지 코드)은 "후보 조회가 `NO_RESULT` 이외로 실패 → 재계획 없이 error"(§4 규칙 2)로 흡수된다.
 
@@ -77,7 +77,7 @@ class Event(BaseModel):
 ## 4. AgentState (`backend/agent/state.py`, LangGraph `TypedDict`, total=False)
 
 ```python
-Intent = Literal["screen","lookup","report_save","refine","chitchat"]
+Intent = Literal["screen","lookup","report_save","refine","chitchat","filing_qa"]   # filing_qa: 심화 F3022(D17)
 Metric = Literal["ROE","ROA","OPM","PER","PBR","PSR","DEBT_RATIO"]   # OPM=영업이익률
 Market = Literal["KOSPI","KOSDAQ"]
 Status = Literal["answered","asked","limit","error"]
@@ -147,6 +147,7 @@ class AgentState(TypedDict, total=False):
     candidates: list[dict]                  # find_stock_candidates data 행 그대로
     metrics: dict[str, MetricRow]
     disclosures: dict[str, list[dict]]      # code→[{title,date,url}]; 없으면 키 없음
+    filing_hits: list[dict]                 # filing_qa 전용: search_filing_text data 그대로(D17). 기본 []
     verdicts: dict[str, Verdict]
     industry_avg: dict[str, dict]           # {"PER": {"value": float|None, "n": int}} ; n=0이면 value=None
     replan_log: list[ReplanRecord]
@@ -165,7 +166,7 @@ class AgentState(TypedDict, total=False):
 | 구분 | 필드 |
 |---|---|
 | 턴 간 유지(D10 경유, 저장·갱신 시점은 §6-5) | `conditions`(`pending_metrics`, `want_disclosures` 포함), `prev_intent`(메모리 `last_intent`), `last_status`(메모리 직전 최종 status), `last_result_summary`, `report_draft` |
-| 요청마다 초기화 | 나머지 전부(`user_msg, intent, intent_reason, target_stock, missing, search_scope, expansion_step, replan_count, plan, tool_cache, candidates, metrics, disclosures, verdicts, industry_avg, replan_log, errors, status, clarify_question, answer`) |
+| 요청마다 초기화 | 나머지 전부(`user_msg, intent, intent_reason, target_stock, missing, search_scope, expansion_step, replan_count, plan, tool_cache, candidates, metrics, disclosures, filing_hits, verdicts, industry_avg, replan_log, errors, status, clarify_question, answer`) |
 
 - **analyze 계약**: 필수 조건 누락 시 analyze가 `missing`을 채우고 `clarify_question`을 작성하고 `status="asked"`를 설정한다(Tool 호출 전). 라우터는 `status=="asked"`로 respond로 분기. chitchat은 respond가 `status="answered"`로 설정. 판단 세부는 §6-6.
 - **재계획 술어(단일)**: `can_replan := replan_count < REPLAN_MAX and next_step is not None`. `next_step` = `expansion_step`보다 큰 단계 중 **효과 있는** 가장 작은 번호(효과 판정은 §6-12). 무효 단계는 건너뛰고 `expansion_step`은 실제 적용한 단계 번호(1↔`market_expand`, 2↔`similar_industry`, 3↔`limit_up`), `replan_count`는 +1 한 번. REPLAN_MAX는 config에서 1~3으로 클램프.
@@ -179,7 +180,7 @@ class AgentState(TypedDict, total=False):
   5. n_pass≥1 → `status="answered"`.
   6. n_pass==0 & n_dec≥1: `can_replan`이면 재계획(trigger=`no_pass`), 아니면 `status="limit"`(respond가 `clarify_question`로 임계값 완화 되묻기 작성).
   - `ok=False` 중 비캐시 대상은 재계획 시 재호출되고 NO_FINANCIALS/NO_RESULT는 캐시 적중.
-- lookup/report_save 종료 status §6-8·9, 공시 호출 시점 §6-11.
+- lookup/report_save 종료 status §6-8·9, 공시 호출 시점 §6-11, filing_qa 경로·종료 §6-13.
 - **면책 분리**: 코드 상수 `DISCLAIMER`를 respond가 `answer`에 부착하고, `/api/chat.disclaimer`에도 같은 상수를 별도 제공(상수 위치는 D9).
 
 ## 5. config.py / .env (`backend/config.py`)
@@ -218,7 +219,7 @@ D0 계약이 아니라 **해당 단위 설계 시 확정해야 하는 입력 요
 3. **pending_metrics 승격·부분 충족** (D7): 임계값 누락("ROE 높은 종목", "PER만 더 낮게")이면 constraint를 만들지 않고 `pending_metrics`에 지표 저장(기존 같은 metric constraint가 있으면 값이 채워질 때까지 유지). 값이 채워진 지표만 constraint로 승격하고 나머지는 남기며 `missing` 갱신, 부족하면 다시 asked. 업종만/숫자만/업종+숫자/일부만 어느 순서든 같은 규칙. 승격 시 `op`는 지표별 기본: ROE/ROA/OPM `>=`, PER/PBR/PSR/DEBT_RATIO `<=`(DESIGN §2), 사용자가 방향을 명시하면 그 값. 숫자만 왔는데 `pending_metrics`가 2개 이상이면 asked(`missing=["threshold"]`).
    - **알려진 미해결 틈 (b)**: refine 행도 pending_metrics에 값이 오면 후속 병합과 같이 승격해야 한다(숫자만 오고 pending 2개 이상이면 asked, `missing=["threshold"]`).
 4. **limit 직후 숫자만** (D7): `last_status=="limit"`에서 숫자만 오면 `constraints`가 1개일 때만 그 metric의 `value`를 덮어쓰고(`ref`는 None으로), 2개 이상이면 asked(`missing=["threshold"]`)로 지표 지정을 요구.
-5. **메모리 갱신** (D10): 요청 종료 시 intent가 screen/refine이면 `conditions`(asked로 끝났어도 병합된 값 포함), `last_intent=intent`, `last_status=status` 저장. lookup/report_save는 conditions(`pending_metrics` 포함)를 이전 그대로 유지하고 `last_intent`·`last_status`만 갱신. **chitchat은 메모리 불변**(last_intent·conditions·last_status 모두 → chitchat 직후 refine/후속 병합 정상). `last_result_summary`/`report_draft`는 새 결과가 생길 때만 갱신(새 screen 시작만으로 지우지 않음, 갱신 시점 D10). 시나리오: screen 완료→lookup→refine, screen asked→lookup→refine에서 conditions(`pending_metrics` 포함) 보존.
+5. **메모리 갱신** (D10): 요청 종료 시 intent가 screen/refine이면 `conditions`(asked로 끝났어도 병합된 값 포함), `last_intent=intent`, `last_status=status` 저장. lookup/report_save는 conditions(`pending_metrics` 포함)를 이전 그대로 유지하고 `last_intent`·`last_status`만 갱신. **chitchat·filing_qa는 메모리 불변**(last_intent·conditions·last_status 모두 → 직후 refine/후속 병합 정상). `last_result_summary`/`report_draft`는 새 결과가 생길 때만 갱신(새 screen 시작만으로 지우지 않음, 갱신 시점 D10). 시나리오: screen 완료→lookup→refine, screen asked→lookup→refine에서 conditions(`pending_metrics` 포함) 보존.
 6. **analyze 되묻기 판단 세부** (D7): screen/refine에서 병합 후 `constraints`와 `pending_metrics`가 모두 비었거나 `pending_metrics`가 남았으면 `missing`에 `"threshold"`, Tool 호출 전 asked(예: 재시작 후 "반도체"). 필수 조건(industry, 각 제약 임계값, lookup/report_save의 target_stock) 누락 시 `missing` 채움. 시나리오: "ROE 높은 종목"(missing=[industry,threshold], pending=[ROE], asked)→"10%"(승격, missing=[industry], asked)→"반도체"(answered); "ROE 10% 넘는 종목"(missing=[industry])→"반도체"에서 ROE 조건 보존.
 7. **prev_intent=None에서 refine** (D7): 이전 조건이 없으므로 조건 부족으로 asked.
 8. **lookup 종료** (D9 status 설정, D8 실행): 지표 행 생성 → answered(None 지표는 `MetricRow.reasons`로 안내). `target_stock` 없음 → asked. 종목명→코드 변환 실패(없음/복수 매칭) → error. `MISSING_API_KEY`/get_financials `ok=False`(NO_FINANCIALS 포함) → error(UNDECIDABLE 표 없음). 재계획 없음. 변환 함수는 D2 제공, 호출 D8, 문구 D9.
@@ -226,6 +227,7 @@ D0 계약이 아니라 **해당 단위 설계 시 확정해야 하는 입력 요
 10. **PER 분포 역산 미지원** (D10): `last_result_summary`에 지표 값이 없어 DESIGN §7 역산 미지원. 추정 임계값 없이 되묻기만. 지원하려면 summary 확장 필요(수정 제안 #9).
 11. **공시 호출 시점** (D8/D9): `want_disclosures`가 True이면 search_disclosures를 PASS 종목에만 호출한다는 것까지 확정. 호출 노드·시점(judge 이후 execute 재진입 또는 respond 전), `NO_RESULT` 외 실패 표기는 D8/D9에서 확정(수정 제안 #10).
 12. **재계획 단계 효과 판정** (D9): ① `search_scope.market is not None`이면 유효 ② D2가 비어있지 않은 유사 업종을 주면 유효 ③ `candidate_limit`가 D3 최대 상한 미만이면 유효(trigger=`no_candidates`일 때는 건너뛸 수 있음). 규칙 1~6 평가·`status` 설정 주체는 D9. `search_scope` 초기화 주체는 plan 노드(D7).
+13. **filing_qa 경로·종료** (D17): analyze는 `target_stock` 원문만 추출(없어도 되묻지 않음, conditions 불변) → plan이 `search_filing_text` step 1개(종목 변환 실패면 `[]`) → execute가 호출해 `filing_hits` 저장·실패는 `errors` → execute 직후 respond(judge·규칙 1~6 미적용). status: `MISSING_API_KEY`·종목 변환 실패·`NO_INDEX`·그 외 실패 → error, `NO_RESULT` → answered(근거 없음 안내), 근거 있음 → answered.
 
 ## DESIGN.md 수정 제안 (반영 완료)
 

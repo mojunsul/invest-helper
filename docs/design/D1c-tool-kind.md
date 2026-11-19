@@ -17,7 +17,7 @@ F3001은 Tool을 "외부 API 툴"과 "로컬 서버 API 툴"로 구분해 정의
 
 - 기본값을 두지 않는 이유: 새 Tool을 등록할 때 구분을 빠뜨리면 import 시점에 바로 `TypeError`로 드러난다(F3001 "구분하여 정의").
 - 현재 Tool 3종은 모두 `external`(DESIGN §3 제목 "전부 외부 API 툴"과 일치).
-- 심화 F3022의 `search_filing_text`는 `kind="local"`로 등록될 예정이다(구현 범위 아님).
+- 심화 F3022의 `search_filing_text`는 `kind="local"`로 등록한다(D17).
 - 체크리스트 1번 확인 방법(코드 추가 없음): `python -c "from backend.tools import registry; registry.load_all(); import json; print(json.dumps(registry.describe(), ensure_ascii=False, indent=2))"`.
 
 ## 3. LLM 전달 영향
@@ -31,7 +31,7 @@ F3001은 Tool을 "외부 API 툴"과 "로컬 서버 API 툴"로 구분해 정의
 - `ToolResult`·`ErrorCode`·`Tool.run` 래퍼·캐시 키(`cache_key_for`)·이벤트 스키마 **불변**. D0 변경 없음.
 - D1 §4 `describe()` 반환 형태에 `kind` 키 1개 추가(확장). D1 §4 "describe()에 내부 구현을 넣지 않는다"와 충돌하지 않는다 — `kind`는 명세가 요구하는 공개 분류이지 `fn`·`requires_keys`·`timeout_s`·API 경로 같은 내부 구현이 아니다.
 
-### D1 문구 수정 제안(사용자 승인 후 반영, 이 단위에서 직접 수정하지 않음)
+### D1 문구 수정 제안 — **반영 완료**(사용자 승인, D17 작업 시 D1 §1·§2·§4와 DESIGN §3에 반영)
 1. D1 §4 `describe()` 주석을 `[{"name","kind","description","input_schema"}]`로, `register` 시그니처에 `kind: Literal["external","local"]`(필수)를 추가.
 2. (선택) DESIGN §3 표에 "종류" 열 또는 문장 "모든 Tool은 `kind`로 external/local을 명시한다" 한 줄 추가.
 

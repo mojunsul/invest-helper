@@ -10,6 +10,7 @@ class Tool:                          # frozen dataclass. 등록 시 1회 생성
     description: str                 # Agent가 보는 "언제 쓰나" 한 문장(DESIGN §3 표)
     input_model: type[BaseModel]     # 입력 스키마의 단일 원천. 기본값은 모델 필드 default로 표현
     fn: Callable[[BaseModel], Awaitable[ToolResult]]   # 원본 본문(테스트용으로 공개)
+    kind: Literal["external","local"]   # 외부 API 툴 / 로컬 서버 API 툴(F3001, D1c). 기본값 없음
     requires_keys: tuple[str, ...]   # settings 속성명. 예: ("DATA_GO_KR_KEY",)
     timeout_s: float | None          # None이면 config 상수 TOOL_TIMEOUT_S
 
@@ -31,11 +32,11 @@ def is_cacheable(r: ToolResult) -> bool                          # r.ok or r.err
 ## 2. @register 동작
 
 ```python
-@register(name="get_financials", description="...", input_model=FinInput, requires_keys=("DATA_GO_KR_KEY","DART_API_KEY"))
+@register(name="get_financials", description="...", input_model=FinInput, kind="external", requires_keys=("DATA_GO_KR_KEY","DART_API_KEY"))
 async def get_financials(inp: FinInput) -> ToolResult: ...
 ```
 
-- 인자 기본값: `requires_keys=()`, `timeout_s=None`(예: `@register(..., requires_keys=(), timeout_s=None)`). `requires_keys`에 `settings`에 없는 속성명이 있으면 **등록 시 `ValueError`**.
+- 시그니처: `register(*, name, description, input_model, kind: Literal["external","local"], requires_keys=(), timeout_s=None)`. `kind`는 필수 키워드(기본값 없음, 빠뜨리면 `TypeError`), 허용 값 밖이면 등록 시 `ValueError`(D1c). `requires_keys`에 `settings`에 없는 속성명이 있으면 **등록 시 `ValueError`**.
 - import 시점에 `Tool`을 만들어 base.py 내부 `_TOOLS: dict[str, Tool]`에 넣는다. **중복 이름은 import 시 `ValueError`**(설정 오류이므로 조기 실패; 키 누락과 달리 런타임 사용자 요청과 무관).
 - 데코레이터는 `Tool`을 반환(함수 자체는 `tool.fn`). 테스트는 `tool.fn` 직접 호출 또는 `tool.run` 호출 모두 가능.
 - 순환 import 방지: 저장소 dict는 base.py, registry.py는 읽기 파사드 + `load_all()`(D3~D5 모듈 import로 등록 유발).
@@ -86,7 +87,7 @@ async def get_financials(inp: FinInput) -> ToolResult: ...
 
 ```python
 def load_all() -> None                       # backend/tools/*.py(base·registry·__init__ 제외)를 pkgutil.iter_modules로 순회 import → 등록. MSG(코드→고정문구 dict)는 base.py 정의
-def describe() -> list[dict]                 # [{"name","description","input_schema"(JSON Schema dict)}] — 이것만 Agent/LLM 프롬프트에 전달
+def describe() -> list[dict]                 # [{"name","kind","description","input_schema"(JSON Schema dict)}] — 이것만 Agent/LLM 프롬프트에 전달 (`kind` 추가는 D1c)
 def get(name) -> Tool | None                 # 내부용(실행 노드 D8, 테스트)
 async def call(name, raw) -> ToolResult      # 미등록 이름 → fail("INVALID_INPUT","알 수 없는 도구입니다."), 그 외 tool.run(raw)
 def cache_key_for(name, raw) -> str | None   # normalize 후 cache_key. 미등록 이름 또는 입력 검증 실패면 None(캐시 우회)

@@ -70,3 +70,31 @@ async def complete(messages: list[dict], *, json_mode: bool, timeout_s: float = 
     except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as e:
         logger.warning("llm code=%s type=%s", code, mask(type(e).__name__))
     raise LlmError(code) from None
+
+
+async def embed(texts: list[str], *, timeout_s: float = LLM_TIMEOUT_S, model: str = "text-embedding-3-small") -> list[list[float]]:
+    """GMS(OpenAI 호환) /embeddings. 오류 매핑은 complete()와 동일."""
+    if not settings.GMS_API_KEY:
+        raise LlmError("MISSING_API_KEY")
+    code = "API_ERROR"
+    try:
+        async with httpx.AsyncClient(timeout=timeout_s) as c:
+            r = await c.post(settings.GMS_BASE_URL.rstrip("/") + "/embeddings",
+                             json={"model": model, "input": texts},
+                             headers={"Authorization": f"Bearer {settings.GMS_API_KEY}"})
+            r.raise_for_status()
+            data = sorted(r.json()["data"], key=lambda d: d["index"])
+            out = [[float(x) for x in d["embedding"]] for d in data]
+            if len(out) != len(texts):
+                raise ValueError("count mismatch")
+            return out
+    except httpx.TimeoutException as e:
+        code = "TIMEOUT"
+        logger.warning("embed code=%s type=%s", code, mask(type(e).__name__))
+    except httpx.HTTPStatusError as e:
+        code = "RATE_LIMIT" if e.response.status_code == 429 else "API_ERROR"
+        logger.warning("embed code=%s type=%s status=%s %s", code, mask(type(e).__name__),
+                       e.response.status_code, _err_diag(e.response))
+    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as e:
+        logger.warning("embed code=%s type=%s", code, mask(type(e).__name__))
+    raise LlmError(code) from None

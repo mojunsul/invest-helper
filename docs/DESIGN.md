@@ -20,12 +20,13 @@ invest-helper/
 │  ├─ tools/
 │  │  ├─ base.py              # ToolResult, 실패 코드, @register
 │  │  ├─ registry.py          # 이름→Tool, Agent에는 이름·설명·스키마만 노출
-│  │  └─ stock_candidates.py  financials.py  disclosures.py
+│  │  └─ stock_candidates.py  financials.py  disclosures.py  filing_text.py(심화 F3022, 로컬)
 │  ├─ events/
 │  │  ├─ bus.py               # publish(event) / subscribe(fn), 구독자 없어도 무해
 │  │  └─ logger_agent.py      # 구독 → SQLite 추가 저장 (LLM 미사용)
 │  └─ db/ sqlite.py           # reports, run_logs
 ├─ frontend/  index.html(대화)  reports.html(관리)  *.js
+├─ scripts/   build_filing_index.py  # 심화 F3022: 공시 원문 오프라인 수집·색인(chromadb)
 ├─ .env.example
 └─ README.md                  # 실행법, 외부 API 출처·이용조건, 구현 범위
 ```
@@ -35,11 +36,13 @@ NF3006(분리)과 NF3001(키는 `.env`만)은 구조로 충족한다.
 ## 2. 도메인·요청 정의
 
 - 기준 조건: 산업, 기준일(기본=최근 영업일) / 선호: 시장(KOSPI·KOSDAQ) / 제약: 지표 임계값(ROE≥, ROA≥, 영업이익률≥, PER≤, PBR≤, PSR≤, 부채비율≤, `PER<=산업평균` 형태 허용)
-- 의도 5종: `screen`(탐색+판단) · `lookup`(단일 종목 지표) · `report_save`(저장) · `refine`(후속 조건 변경) · `chitchat`
+- 의도 6종: `screen`(탐색+판단) · `lookup`(단일 종목 지표) · `report_save`(저장) · `refine`(후속 조건 변경) · `chitchat` · `filing_qa`(공시 본문 서술 질문, 심화 F3022 — `docs/design/D17-filing-rag.md`)
 - **되묻기**: 임계값 없는 "ROE 높은 종목"은 Tool 호출 전에 되묻는다. 산업이 없어도 되묻는다.
 - 면책: 모든 최종 응답 끝에 "투자 권유가 아니며 전문가 조언을 대신하지 않습니다" 고정 문구를 **코드가 붙인다**(LLM 생성에 맡기지 않음).
 
-## 3. Tool 정의 (F3001~F3004, 전부 외부 API 툴)
+## 3. Tool 정의 (F3001~F3004 외부 API 툴 + 심화 F3022 로컬 툴)
+
+모든 Tool은 `kind`로 `external`(외부 API 툴)/`local`(로컬 서버 API 툴)을 명시해 등록한다(D1c).
 
 공통 응답:
 ```python
@@ -56,11 +59,12 @@ ToolResult = {"ok": bool, "data": ..., "error": {"code": str, "message": str} | 
 | `find_stock_candidates` | 사용자가 산업·시장으로 종목을 찾아야 할 때, 비교 대상 후보 목록을 얻는다 | `industry:str`, `market:str?`(None=전체), `base_date:str?`, `extra_industries:list[str]?`, `limit:int?` | `[{code, name, market, industry, mkt_cap, price}]` | `NO_RESULT` |
 | `get_financials` | 후보 종목의 PER·PBR·ROE·부채비율이 필요할 때 종목코드 하나로 조회한다 (내부에서 종목코드→법인등록번호 변환) | `stock_code:str`, `base_date:str?` (→ `bizYear` 결정, 기본=가장 최근 확정 사업연도) | `{code, fiscal_period, revenue, op_profit, net_income, assets, equity, debt_ratio, mkt_cap}` (원천값) | `NO_FINANCIALS` |
 | `search_disclosures` | 종목의 최근 공시 제목·일자·링크를 보여줄 때 쓴다. 수치는 주지 않는다 | `stock_code:str`, `limit:int=3` | `[{title, date, url}]` | `NO_RESULT` |
+| `search_filing_text` (local, 심화 F3022) | 외부 API로 확인할 수 없는 공시 본문 서술(사업 내용·실적 전망·가이던스·위험 요인·경영진 분석 등)을 물을 때, 미리 색인한 공시 원문에서 근거 문단을 찾는다. 수치 지표 조회에는 쓰지 않는다 | `query:str`, `stock_code:str?`, `top_k:int=3` | `[{text, score, stock_code, corp_name, title, rcept_no, date, section, url}]` | `NO_INDEX`, `NO_RESULT` |
 
 - 기본값: `base_date` 미지정 → 최근 영업일. 재무는 확정 분기 기준이므로 `meta.actual_basis != requested_basis` 이면 `estimated=true`로 밝힌다(F3002).
 - 데이터 흐름: `find_stock_candidates.code` → `get_financials.stock_code` → (통과 종목만) `search_disclosures.stock_code`.
 - Tool로 두지 않는 것: 지표 계산, 산업 평균, 충족 판단, 리포트 저장 (실행 흐름이 직접 수행).
-- 심화 F3022 시 `search_filing_text`(로컬 서버 API 툴, 실패 코드 `NO_INDEX`)를 추가. 필수 구현 범위에는 포함하지 않는다.
+- 심화 F3022 `search_filing_text`: 사전 지정 종목의 사업보고서 원문을 `scripts/build_filing_index.py`가 오프라인으로 수집해 chromadb에 색인하고, Tool은 로컬 색인만 읽는다(요청 중 DART 원문 호출 없음). 색인이 없으면 `NO_INDEX` → 고정 형식 "아직 모으지 못했습니다" 응답. 상세는 `docs/design/D17-filing-rag.md`.
 
 **실호출 검증 결과 (2026-11-18, 삼성전자)**
 - 재무정보 API(`getSummFinaStat_V2`)는 `crno`(법인등록번호)+`bizYear`로 조회. **연간** 데이터만 제공(분기 없음). 연결(`fnclDcd=110`)·별도(120) 두 행이 오며 **연결 우선**, 없으면 별도. 2025년분까지 조회됨.
@@ -74,6 +78,7 @@ ToolResult = {"ok": bool, "data": ..., "error": {"code": str, "message": str} | 
 ```
 analyze ─┬─(chitchat)────────────────────────────► respond
          ├─(조건 부족: 되묻기)────────────────────► respond
+         ├─(filing_qa)─► plan ─► execute ─────────► respond   (judge·재계획 없음, D17)
          └─► plan ─► execute ─► judge ─┬─(충족≥1 | 치명실패 | 상한)─► respond
                        ▲                │
                        └── replan ◄─────┘ (충족 0 & replan_count<3 & 재시도 가치 있음)
@@ -86,12 +91,12 @@ analyze ─┬─(chitchat)─────────────────�
 | 노드 | LLM | 하는 일 |
 |---|---|---|
 | analyze | O | 의도 분류 + 조건 추출(구조화 출력). 못 뽑은 조건은 `None`. 이전 조건과 병합(§7). 의도·이유를 이벤트로 발행 |
-| plan | 규칙 우선 | 의도·조건으로 Tool 순서 결정. screen=[candidates, financials(후보별)], 공시 요청 시 +disclosures. 불필요 Tool 제외 |
+| plan | 규칙 우선 | 의도·조건으로 Tool 순서 결정. screen=[candidates, financials(후보별)], 공시 요청 시 +disclosures, filing_qa=[search_filing_text]. 불필요 Tool 제외 |
 | execute | X | 계획대로 호출. 이전 결과를 `tool_cache`(키: tool+입력)에서 먼저 조회 → 재사용. 개별 실패는 사유 기록 후 계속 |
 | judge | X | `constraints.py`로 계산·판단. 충족/불충족/판단불가 분류. 끝에서 `want_disclosures`이고 통과 종목이 있으면 통과 종목에 `search_disclosures` 호출(공시 실패는 종목별 표기, 판정·status 불변) |
-| respond | O(문장화) | 결과 표·근거는 코드가 만들고 LLM은 요약 문장만. 면책 문구 코드 부착. 리포트 초안 생성 |
+| respond | O(문장화) | 결과 표·근거는 코드가 만들고 LLM은 요약 문장만. 면책 문구 코드 부착. 리포트 초안 생성. filing_qa는 근거 문단·출처(공시명·접수번호·일자·링크·발췌) 블록을 코드가 붙임 |
 
-`AgentState` 필드: `session_id, user_msg, intent, intent_reason, conditions{industry,market,base_date,constraints[],want_disclosures,pending_metrics}, plan[], tool_cache{}, candidates[], metrics{code:{...}}, verdicts{code:{status,reasons,failed}}, industry_avg{value,n}, search_scope, expansion_step, replan_count, replan_log[], errors[], status, clarify_question, missing, target_stock, disclosures, prev_intent, answer, report_draft`
+`AgentState` 필드: `session_id, user_msg, intent, intent_reason, conditions{industry,market,base_date,constraints[],want_disclosures,pending_metrics}, plan[], tool_cache{}, candidates[], metrics{code:{...}}, verdicts{code:{status,reasons,failed}}, industry_avg{value,n}, search_scope, expansion_step, replan_count, replan_log[], errors[], status, clarify_question, missing, target_stock, disclosures, filing_hits, prev_intent, answer, report_draft`
 - verdict `PASS/FAIL/UNDECIDABLE`. 집계는 FAIL 우선이되 `reasons`에 UNDECIDABLE 사유도 병기(F3011). `Constraint`는 value/ref 택일. `want_disclosures` 기본 False(사용자가 공시를 요청할 때만 공시 포함).
 - 상세는 `docs/design/D0-contract.md`.
 
@@ -143,7 +148,7 @@ analyze ─┬─(chitchat)─────────────────�
 
 - 세션 메모리 = `{conditions, last_intent, last_status, last_result_summary(상위 종목코드·충족 개수), report_draft}`. Tool 원본 응답은 보관하지 않는다. AgentState는 요청마다 새로 만들어 메모리로 채우며 `tool_cache`는 요청 간 유지하지 않는다(재계획 내에서만 재사용).
 - `refine`: 새로 추출된 필드만 덮어쓴다("PER만 더 낮게" → 산업·ROE 유지, PER 임계값만 갱신; constraints는 metric 단위 덮어쓰기). 단 **추정한 새 임계값**은 만들지 않고 "현재 PER 상한 X → 얼마로 낮출까요?"로 되묻는다. 직전 결과 PER 분포 역산은 `last_result_summary`에 지표 값이 없어 이번 범위에서 미지원(되묻기만).
-- 후속 병합: 직전 status가 asked(+`prev_intent`∈screen/refine)이면 후속 병합, 새 screen은 conditions 전체 초기화, chitchat은 메모리 불변. `lookup/report_save`는 `target_stock`을 쓰고 조건 불변. 상세는 `docs/design/D0-contract.md`.
+- 후속 병합: 직전 status가 asked(+`prev_intent`∈screen/refine)이면 후속 병합, 새 screen은 conditions 전체 초기화, chitchat·filing_qa는 메모리 불변. `lookup/report_save`는 `target_stock`을 쓰고 조건 불변. 상세는 `docs/design/D0-contract.md`.
 - 저장소: 프로세스 메모리 dict(키=session_id). 서버 재시작 시 소실 — 이번 범위에서는 감수.
 
 ## 8. 저장소 (SQLite)
@@ -182,6 +187,7 @@ run_logs(id, session_id, seq, ts, type, payload_json)
 3. 한 종목 `NO_FINANCIALS` → 해당 종목 UNDECIDABLE, 나머지 진행.
 4. "안녕" → analyze → respond (plan 건너뜀).
 5. "ROE 높은 종목" → 임계값 없음 → 되묻기(Tool 0회).
+6. (심화 F3022) "삼성전자 최근 실적 가이던스가 어땠어?" → analyze(filing_qa, target_stock=삼성전자) → plan(search_filing_text) → execute → respond(요약 + 근거 공시 블록). 색인이 없으면 `NO_INDEX` 고정 형식.
 
 ## 11. 구현 순서 (명세 §7 매핑)
 
@@ -189,7 +195,7 @@ run_logs(id, session_id, seq, ts, type, payload_json)
 2. Tool 3개 + 공통 `ToolResult` (+ 개별 호출 테스트)
 3. `constraints.py` 단위 테스트 (계산식은 이게 핵심 — 순수 함수라 테스트 쉬움)
 4. LangGraph 흐름 + 이벤트 버스 + logger_agent
-5. FastAPI + SQLite → 6. 프론트 2화면 → 7. (선택) F3022 RAG
+5. FastAPI + SQLite → 6. 프론트 2화면 → 7. (선택) F3022 RAG (D17)
 
 ## 12. 열린 항목 / 범위 밖
 
