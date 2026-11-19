@@ -184,6 +184,8 @@
       return box;
     }
 
+    var EDIT_NOTE = "지표·기준일은 분석 당시 조회한 근거라 수정할 수 없습니다. 바꾸려면 채팅에서 다시 분석해 새로 저장하세요.";
+
     function editBlock(rep) {
       var box = el("div");
       var btn = el("button", { text: "이름·메모 수정", attrs: { type: "button" } });
@@ -197,7 +199,8 @@
         var cancel = el("button", { text: "취소", attrs: { type: "button" } });
         var form = el("form", { class: "edit-form" }, [
           el("label", { text: "이름", attrs: { for: "edit-name" } }), ni,
-          el("label", { text: "메모", attrs: { for: "edit-memo" } }), mi, save, cancel]);
+          el("label", { text: "메모", attrs: { for: "edit-memo" } }), mi,
+          el("p", { class: "hint", text: EDIT_NOTE }), save, cancel]);
         cancel.addEventListener("click", function () { form.remove(); btn.hidden = false; btn.focus(); });
         form.addEventListener("submit", async function (e) {
           e.preventDefault();
