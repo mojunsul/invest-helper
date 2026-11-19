@@ -72,3 +72,5 @@ def test_static_served_with_csp(client, path):
     assert r.status_code == 200
     assert "script-src 'self'" in r.headers["content-security-policy"]
     assert r.headers["x-content-type-options"] == "nosniff"
+    if path.endswith(".js"):  # nosniff + text/plain이면 브라우저가 스크립트를 실행하지 않는다
+        assert "javascript" in r.headers["content-type"]

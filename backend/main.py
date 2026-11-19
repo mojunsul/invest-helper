@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from backend.tools import registry
 from backend.tools.base import install_log_mask
 
 logger = logging.getLogger(__name__)
+# Windows 레지스트리가 .js를 text/plain으로 매핑하면 nosniff 때문에 브라우저가 스크립트를 차단한다
+mimetypes.add_type("text/javascript", ".js")
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 _HEADERS = {"X-Content-Type-Options": "nosniff",
             "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
