@@ -21,9 +21,12 @@
   </main>
   <form id="form">
     <label for="msg" class="sr-only">메시지</label>
-    <textarea id="msg" maxlength="2000" rows="2" required aria-describedby="help"></textarea>
-    <button type="submit" id="send">전송</button>
-    <p id="help">Enter 전송, Shift+Enter 줄바꿈. 새로고침하면 화면 대화 내용은 사라지지만 맥락은 서버가 기억합니다.</p>
+    <div class="composer">
+      <textarea id="msg" maxlength="2000" rows="2" required aria-describedby="help"
+                placeholder="예: 반도체 중 ROE 10% 이상인 종목"></textarea>
+      <button type="submit" id="send">전송</button>
+    </div>
+    <p id="help">Enter 전송 · Shift+Enter 줄바꿈 · 새로고침하면 화면 기록은 지워지지만 맥락은 서버가 기억합니다</p>
   </form>
   <footer id="disclaimer">투자 권유가 아니며 전문가 조언을 대신하지 않습니다.</footer>
   <script src="common.js"></script>
