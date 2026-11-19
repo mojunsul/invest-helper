@@ -31,6 +31,19 @@ async def plan(state) -> dict:
         inp = {"industry": cond["industry"], "market": scope["market"], "base_date": cond["base_date"],
                "extra_industries": scope["extra_industries"], "limit": scope["candidate_limit"]}
         steps.append({"tool": "find_stock_candidates", "input": {k: v for k, v in inp.items() if v}})
+    elif intent == "filing_qa":
+        inp = {"query": state["user_msg"][:200]}
+        ok_ = True
+        if state.get("target_stock"):
+            try:
+                m = await asyncio.to_thread(resolve_stock, state["target_stock"])
+            except Exception:
+                m = None
+            ok_ = m is not None and m.status == "ok"
+            if ok_:
+                inp["stock_code"] = m.matches[0].stock_code
+        if ok_:
+            steps.append({"tool": "search_filing_text", "input": inp})
     elif intent == "lookup" and state.get("target_stock"):
         try:
             m = await asyncio.to_thread(resolve_stock, state["target_stock"])

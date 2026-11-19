@@ -1,7 +1,7 @@
 langgraph==1.2.22
 defusedxml==0.7.1
 httpx==0.28.1
-pydantic==2.14.1
+pydantic==2.14.2
 python-dotenv==1.2.3
 requests==2.34.2
 pytest==9.2.0

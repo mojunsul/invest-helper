@@ -39,6 +39,8 @@ def _summary(name: str, r: ToolResult) -> str:
         return f"후보 {len(r.data)}건, 기준일 {r.meta.actual_basis}"
     if name == "get_financials":
         return f"{r.meta.actual_basis}, 추정={'예' if r.meta.estimated else '아니오'}"
+    if name == "search_filing_text":
+        return f"근거 {len(r.data)}건(최고 유사도 {max(h['score'] for h in r.data):.2f})"
     return f"공시 {len(r.data)}건"
 
 
@@ -153,6 +155,16 @@ async def execute(state) -> dict:
             res = await call_batch(cache, sid, "get_financials", codes, lambda c: fin_input(c, cond))
             errors = record_batch(errors, "get_financials", codes, res)
         out["candidates"] = cands
+    elif intent == "filing_qa":
+        steps = [s for s in state.get("plan") or [] if s["tool"] == "search_filing_text"]
+        if steps:
+            code = steps[0]["input"].get("stock_code")
+            r = await _call(cache, sid, "search_filing_text", steps[0]["input"])
+            errors = record_batch(errors, "search_filing_text", [code], [r])
+            if r.ok:
+                out["filing_hits"] = r.data
+        elif state.get("target_stock"):
+            errors, _ = await _resolve_target(state, errors)
     elif intent in ("lookup", "report_save"):
         steps = [s for s in state.get("plan") or [] if s["tool"] == "get_financials"]
         code = steps[0]["input"]["stock_code"] if steps else None

@@ -59,7 +59,7 @@ def build_state(session_id: str, user_msg: str) -> AgentState:
 
 def update_memory(session_id: str, final_state: dict) -> None:
     intent, status = final_state.get("intent"), final_state.get("status")
-    if intent is None or intent == "chitchat":
+    if intent is None or intent in ("chitchat", "filing_qa"):
         return
     if status is None:
         logger.info("memory update skipped: no status")

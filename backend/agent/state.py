@@ -2,7 +2,7 @@ from typing import Literal, Required, TypedDict
 
 from backend.tools.base import ErrorCode
 
-Intent = Literal["screen", "lookup", "report_save", "refine", "chitchat"]
+Intent = Literal["screen", "lookup", "report_save", "refine", "chitchat", "filing_qa"]
 Metric = Literal["ROE", "ROA", "OPM", "PER", "PBR", "PSR", "DEBT_RATIO"]
 Market = Literal["KOSPI", "KOSDAQ"]
 Status = Literal["answered", "asked", "limit", "error"]
@@ -86,6 +86,7 @@ class AgentState(TypedDict, total=False):
     candidates: list[dict]
     metrics: dict[str, MetricRow]
     disclosures: dict[str, list[dict]]
+    filing_hits: list[dict]
     verdicts: dict[str, Verdict]
     industry_avg: dict[str, dict]
     replan_log: list[ReplanRecord]
