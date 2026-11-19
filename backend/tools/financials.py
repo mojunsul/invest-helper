@@ -12,7 +12,7 @@ from backend.identity.models import IdentityError
 from backend.identity import store
 from backend.identity.resolve import get_crno
 from backend.tools import stock_candidates as sc
-from backend.tools.base import ToolFailure, fail, ok, register
+from backend.tools.base import ToolFailure, fail, ok, register, throttle
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,7 @@ def _is_financial(stock_code: str) -> bool:
 
 
 async def _fetch_fin(crno: str, biz_year: int) -> dict:
+    await throttle(URL)
     async with httpx.AsyncClient(timeout=10) as c:
         r = await c.get(URL, params={"serviceKey": settings.DATA_GO_KR_KEY, "resultType": "json", "crno": crno,
                                      "bizYear": biz_year, "numOfRows": 10, "pageNo": 1})
@@ -50,6 +51,7 @@ async def _fetch_fin(crno: str, biz_year: int) -> dict:
 
 
 async def _fetch_price(basDt: str, stock_code: str) -> dict:
+    await throttle(sc.URL)
     async with httpx.AsyncClient(timeout=10) as c:
         r = await c.get(sc.URL, params={"serviceKey": settings.DATA_GO_KR_KEY, "resultType": "json",
                                         "numOfRows": 10, "pageNo": 1, "basDt": basDt, "likeSrtnCd": stock_code})

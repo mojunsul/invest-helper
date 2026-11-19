@@ -233,3 +233,28 @@ def test_is_financial_db_error_false_keeps_no_financials(monkeypatch, exc):
     fetch(monkeypatch, {})
     r = run()  # DB 오류가 API_ERROR로 번지지 않고 기존 NO_FINANCIALS 유지
     assert r.error.code == "NO_FINANCIALS" and r.error.message == fin._NO_FIN
+
+
+class _Stop(Exception):
+    pass
+
+
+def test_throttle_applied_before_http(monkeypatch):
+    async def fake(url):
+        raise _Stop(url)
+    monkeypatch.setattr(fin, "throttle", fake)
+    with pytest.raises(_Stop) as e:
+        asyncio.run(fin._fetch_fin("1", 2023))
+    assert e.value.args[0] == fin.URL
+
+
+_REAL_FETCH_PRICE = fin._fetch_price  # autouse 픽스처가 모듈 속성을 가짜로 바꾸므로 원본 보관
+
+
+def test_throttle_applied_before_http_price(monkeypatch):
+    async def fake(url):
+        raise _Stop(url)
+    monkeypatch.setattr(fin, "throttle", fake)
+    with pytest.raises(_Stop) as e:
+        asyncio.run(_REAL_FETCH_PRICE("20240101", "000001"))
+    assert e.value.args[0] == fin.sc.URL

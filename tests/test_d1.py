@@ -144,3 +144,38 @@ def test_registry_and_cache():
     assert asyncio.run(registry.call("t", {"industry": "a"})).ok
     assert is_cacheable(ok([1])) and is_cacheable(fail("NO_RESULT", "x")) and not is_cacheable(fail("TIMEOUT", "x"))
     registry.load_all()
+
+
+def _thr(monkeypatch, table, now=100.0):
+    sleeps, clock = [], [now]
+
+    async def fake_sleep(s):
+        sleeps.append(s)
+    monkeypatch.setattr(base, "_next_start", {})
+    monkeypatch.setattr(base, "_sleep", fake_sleep)
+    monkeypatch.setattr(base, "_now", lambda: clock[0])
+    monkeypatch.setattr(base, "HOST_INTERVAL_S", table)
+    return sleeps, clock
+
+
+def test_throttle_accumulates(monkeypatch):
+    sleeps, clock = _thr(monkeypatch, {"h.test": 1.0})
+
+    async def go():
+        await asyncio.gather(*[base.throttle("https://h.test/a") for _ in range(3)])
+    asyncio.run(go())
+    assert sleeps == [1.0, 2.0]
+    clock[0] = 110.0
+    sleeps.clear()
+    asyncio.run(base.throttle("https://h.test/a"))
+    assert sleeps == []
+
+
+def test_throttle_hosts_separate_and_unknown(monkeypatch):
+    sleeps, _ = _thr(monkeypatch, {"a.test": 1.0, "b.test": 1.0})
+    asyncio.run(base.throttle("https://a.test/x"))
+    asyncio.run(base.throttle("https://b.test/x"))
+    assert sleeps == []
+    before = dict(base._next_start)
+    asyncio.run(base.throttle("https://other.test/x"))
+    assert sleeps == [] and base._next_start == before

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from backend.config import settings
 from backend.identity.models import IdentityError
 from backend.identity.resolve import get_corp_code
-from backend.tools.base import ToolFailure, fail, ok, register
+from backend.tools.base import ToolFailure, fail, ok, register, throttle
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ def _today() -> date:
 
 
 async def _fetch_list(corp_code: str, bgn_de: str, count: int) -> dict:
+    await throttle(URL)
     async with httpx.AsyncClient(timeout=10) as c:
         r = await c.get(URL, params={"crtfc_key": settings.DART_API_KEY, "corp_code": corp_code,
                                      "bgn_de": bgn_de, "page_count": count})

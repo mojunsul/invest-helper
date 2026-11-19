@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from backend.config import settings
 from backend.identity.models import IdentityError
 from backend.identity.resolve import resolve_industry, select_by_industry
-from backend.tools.base import ToolFailure, fail, ok, register
+from backend.tools.base import ToolFailure, fail, ok, register, throttle
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ def _today() -> date:
 
 
 async def _fetch_page(basDt: str, page: int, rows: int) -> dict:
+    await throttle(URL)
     async with httpx.AsyncClient(timeout=10) as c:
         r = await c.get(URL, params={"serviceKey": settings.DATA_GO_KR_KEY, "resultType": "json",
                                      "numOfRows": rows, "pageNo": page, "basDt": basDt})

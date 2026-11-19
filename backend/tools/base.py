@@ -3,10 +3,11 @@ import json
 import logging
 import re
 import threading
+import time
 import traceback
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Literal, get_args
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlparse
 
 import httpx
 from pydantic import BaseModel, ValidationError, model_validator
@@ -132,6 +133,26 @@ def install_log_mask() -> None:
             for h in lg.handlers:
                 if not any(isinstance(f, _MaskFilter) for f in h.filters):
                     h.addFilter(_MaskFilter())
+
+
+# ---- D1b: 호스트별 최소 요청 간격 ----
+HOST_INTERVAL_S = {"opendart.fss.or.kr": 0.2, "apis.data.go.kr": 0.1}  # 임의 상수. 없는 호스트는 간격 없음
+_next_start: dict[str, float] = {}  # 호스트 -> 다음 요청 시작 가능 monotonic 시각
+_sleep = asyncio.sleep  # 테스트에서 patch
+_now = time.monotonic
+
+
+async def throttle(url: str) -> None:
+    """요청 직전 호출. 호스트별 슬롯을 예약(await 이전에 읽기·쓰기 → 락 불필요)하고 그 시각까지 대기."""
+    host = urlparse(url).hostname or ""
+    gap = HOST_INTERVAL_S.get(host, 0)
+    if gap <= 0:
+        return
+    now = _now()
+    start = max(now, _next_start.get(host, 0.0))
+    _next_start[host] = start + gap
+    if start > now:
+        await _sleep(start - now)
 
 
 # ---- Tool ----

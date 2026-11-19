@@ -26,6 +26,7 @@ def is_cacheable(r: ToolResult) -> bool                          # r.ok or r.err
 
 - 입력 스키마 표현: **Pydantic v2 모델**. Agent 노출용 JSON Schema는 `input_model.model_json_schema()`로 파생(별도 손작성 스키마 없음).
 - 본문(`fn`)은 **async**, 검증된 입력 모델을 받아 `ToolResult`를 반환(`ok(...)`/`fail(...)`)하거나 `ToolFailure`/예외를 던진다. 빈 결과는 본문이 `fail("NO_RESULT", ...)`로 반환(`data=[]` 금지, D0).
+- 외부 HTTP 직전 `throttle(url)`로 호스트별 최소 간격(D1b).
 
 ## 2. @register 동작
 

@@ -108,3 +108,16 @@ def test_input_and_key(monkeypatch):
         assert asyncio.run(d.search_disclosures.run({"stock_code": "000001", **kw})).error.code == "INVALID_INPUT"
     monkeypatch.setattr(base, "settings", Settings(DART_API_KEY=""))
     assert run().error.code == "MISSING_API_KEY"
+
+
+class _Stop(Exception):
+    pass
+
+
+def test_throttle_applied_before_http(monkeypatch):
+    async def fake(url):
+        raise _Stop(url)
+    monkeypatch.setattr(d, "throttle", fake)
+    with pytest.raises(_Stop) as e:
+        asyncio.run(d._fetch_list("c", "20240101", 1))
+    assert e.value.args[0] == d.URL

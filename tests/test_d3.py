@@ -109,3 +109,16 @@ def test_api_codes(monkeypatch):
     fetch(monkeypatch, {"bad": 1})
     r = run()
     assert r.error.code == "API_ERROR" and KEY not in r.error.message
+
+
+class _Stop(Exception):
+    pass
+
+
+def test_throttle_applied_before_http(monkeypatch):
+    async def fake(url):
+        raise _Stop(url)
+    monkeypatch.setattr(sc, "throttle", fake)
+    with pytest.raises(_Stop) as e:
+        asyncio.run(sc._fetch_page("20240101", 1, 10))
+    assert e.value.args[0] == sc.URL
