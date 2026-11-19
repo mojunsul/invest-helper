@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 from datetime import date
 
 import httpx
@@ -9,6 +10,7 @@ from backend.identity.models import IdentityError
 from backend.tools import base
 from backend.tools import financials as fin
 
+REAL_IS_FINANCIAL = fin._is_financial
 KEY = "sekret"
 CRNO = "1301110006246"
 
@@ -38,6 +40,7 @@ def env(monkeypatch):
     monkeypatch.setattr(fin, "settings", Settings(DATA_GO_KR_KEY=KEY))
     monkeypatch.setattr(fin, "_today", lambda: date(2026, 11, 19))
     monkeypatch.setattr(fin, "get_crno", lambda c: CRNO)
+    monkeypatch.setattr(fin, "_is_financial", lambda c: False)  # 실DB 비의존(D4a 테스트는 개별 재지정)
 
     async def p(d, c):
         return price(c)
@@ -168,3 +171,65 @@ def test_invalid_input(monkeypatch):
     assert run(stock_code="abc").error.code == "INVALID_INPUT"
     assert run(base_date="2025/01/01").error.code == "INVALID_INPUT"
     assert run(base_date="2025-02-30").error.code == "INVALID_INPUT"
+
+
+# ---------------- D4a: 금융업 전용 안내 ----------------
+def test_d4a_financial_zero_rows_message(monkeypatch):
+    fetch(monkeypatch, {})
+    monkeypatch.setattr(fin, "_is_financial", lambda c: True)
+    r = run()
+    assert r.error.code == "NO_FINANCIALS" and r.error.message == fin.NO_FIN_FINANCIAL
+    assert fin.NO_FIN_FINANCIAL != fin._NO_FIN and base.is_cacheable(r)
+
+
+def test_d4a_non_financial_zero_rows_keeps_message(monkeypatch):
+    fetch(monkeypatch, {})
+    r = run()
+    assert r.error.code == "NO_FINANCIALS" and r.error.message == fin._NO_FIN
+
+
+def test_d4a_financial_with_rows_unaffected(monkeypatch):
+    fetch(monkeypatch, {2025: resp([frow()])})
+    monkeypatch.setattr(fin, "_is_financial", lambda c: True)
+    assert run().ok
+
+
+def test_d4a_crno_missing_path_untouched(monkeypatch):
+    def nr(c):
+        raise IdentityError("NO_RESULT")
+    monkeypatch.setattr(fin, "get_crno", nr)
+    monkeypatch.setattr(fin, "_is_financial", lambda c: True)
+    assert run().error.message == fin._NO_FIN
+
+
+def _db(monkeypatch, tmp_path, rows):
+    from backend import config
+    from backend.identity import store
+    monkeypatch.setattr(config, "DB_PATH", str(tmp_path / "t.db"))
+    con = store.connect_rw()
+    with con:
+        for i, (code, ind) in enumerate(rows):
+            con.execute("INSERT INTO company(stock_code, corp_code, name, name_norm, listed, induty_code, "
+                        "detail_status) VALUES (?,?,?,?,1,?, 'ok')", (code, f"{i:08d}", "n", "n", ind))
+    con.close()
+
+
+def test_is_financial_prefix(monkeypatch, tmp_path):
+    _db(monkeypatch, tmp_path, [("000001", "64121"), ("000002", "26110"), ("000003", None), ("000004", "651"),
+                                ("000005", "66199"), ("000006", "6")])
+    monkeypatch.setattr(fin, "_is_financial", REAL_IS_FINANCIAL)
+    got = {c: fin._is_financial(c) for c in ("000001", "000002", "000003", "000004", "000005", "000006", "999999")}
+    assert got == {"000001": True, "000002": False, "000003": False, "000004": True, "000005": True,
+                   "000006": False, "999999": False}
+
+
+@pytest.mark.parametrize("exc", [IdentityError("API_ERROR"), sqlite3.OperationalError("x")])
+def test_is_financial_db_error_false_keeps_no_financials(monkeypatch, exc):
+    def boom(*a, **k):
+        raise exc
+    monkeypatch.setattr(fin.store, "read", boom)
+    monkeypatch.setattr(fin, "_is_financial", REAL_IS_FINANCIAL)
+    assert fin._is_financial("000001") is False
+    fetch(monkeypatch, {})
+    r = run()  # DB 오류가 API_ERROR로 번지지 않고 기존 NO_FINANCIALS 유지
+    assert r.error.code == "NO_FINANCIALS" and r.error.message == fin._NO_FIN

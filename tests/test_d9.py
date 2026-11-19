@@ -13,6 +13,7 @@ from backend.events import bus
 from backend.identity.models import StockMatch, StockRef
 from backend.tools import registry
 from backend.tools.base import fail, ok
+from backend.tools.financials import NO_FIN_FINANCIAL
 
 registry.load_all()
 
@@ -516,3 +517,42 @@ def test_langgraph_partial_return_and_required(g, ev):
     r = run(graph.run_agent(init("원문")))
     assert r["session_id"] == "s" and r["user_msg"] == "원문" and r["intent"] == "screen"
     assert graph.RECURSION_LIMIT == 40
+
+
+# ---------------- D4a: 금융업 안내 ----------------
+FE = lambda stock=None: E("get_financials", "NO_FINANCIALS", stock, NO_FIN_FINANCIAL)  # noqa: E731
+NOTE = "※ " + NO_FIN_FINANCIAL
+
+
+def test_fin_note_screen_error(ev):
+    a = run(rs.respond(S(candidates=[{"code": "1", "name": "A"}], verdicts={"1": V("UNDECIDABLE", ["NO_FINANCIALS"])},
+                         errors=[FE("1")])))["answer"]
+    assert "후보 1개 모두 판단불가입니다: 재무정보 없음 1\n\n" + NOTE in a and a.count(NOTE) == 1
+
+
+def test_fin_note_absent_for_plain_no_financials(ev):
+    st = dict(candidates=[{"code": "1", "name": "A"}], verdicts={"1": V("UNDECIDABLE", ["NO_FINANCIALS"])})
+    a = run(rs.respond(S(**st, errors=[E("get_financials", "NO_FINANCIALS", "1", "재무 정보를 찾을 수 없습니다.")])))["answer"]
+    assert "금융업" not in a and "재무정보 없음 1" in a
+    assert NOTE not in run(rs.respond(S(**st, errors=[E("find_stock_candidates", "NO_FINANCIALS", "1", NO_FIN_FINANCIAL)])))["answer"]
+
+
+def test_fin_note_answered_once_and_excluded_line_unchanged(ev):
+    st = dict(candidates=[{"code": c, "name": c} for c in ("1", "2", "3")],
+              verdicts={"1": V("PASS"), "2": V("UNDECIDABLE", ["NO_FINANCIALS"]), "3": V("UNDECIDABLE", ["NO_FINANCIALS"])},
+              metrics={"1": row()}, errors=[FE("2"), FE("3")])
+    o = run(rs.respond(S(**st, status="answered")))
+    assert o["status"] == "answered" and o["answer"].count(NOTE) == 1
+    assert "- 2(2): 재무정보 없음" in o["answer"]
+
+
+def test_fin_note_limit(ev):
+    o = run(rs.respond(S(status="limit", candidates=[{"code": "1", "name": "A"}, {"code": "2", "name": "B"}],
+                         verdicts={"1": V("FAIL", ["THRESHOLD_NOT_MET"], ["ROE"]), "2": V("UNDECIDABLE", ["NO_FINANCIALS"])},
+                         metrics={"1": row(roe=1.0)}, errors=[FE("2")])))
+    assert o["status"] == "limit" and o["answer"].count(NOTE) == 1
+
+
+def test_fin_note_lookup_text(ev):
+    a = run(rs.respond(S(intent="lookup", target_stock="105560", errors=[FE("105560")])))["answer"]
+    assert a.startswith(f"‘105560’의 재무정보를 제공하지 못합니다. {NO_FIN_FINANCIAL}") and "찾을 수 없습니다" not in a

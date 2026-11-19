@@ -314,6 +314,18 @@ def test_req3_no_financials_undecidable(c, w):
     assert "재무정보 없음" in b["answer"]
 
 
+def test_d4a_all_financial_candidates_error_with_note(c, w, monkeypatch):
+    async def empty(cr, year):  # 은행 후보 전부 재무 API 0건
+        w.fin.append(year)
+        return {"response": {"header": {"resultCode": "00"}, "body": {"items": ""}}}
+    monkeypatch.setattr(fin, "_fetch_fin", empty)
+    w.summary = None
+    b = assert_common(c, w, ask(c, w, A(industry="은행", constraints=C_BANK)), seams=False)
+    assert b["status"] == "error" and b["replans"] == []
+    assert set(verdicts(b).values()) == {"UNDECIDABLE"} and len(verdicts(b)) == 3
+    assert "재무정보 없음 3" in b["answer"] and "※ " + fin.NO_FIN_FINANCIAL in b["answer"]
+
+
 # ---------------- 요청 4 ----------------
 def test_req4_chitchat(c, w):
     b = assert_common(c, w, ask(c, w, A(intent="chitchat"), msg="안녕"))

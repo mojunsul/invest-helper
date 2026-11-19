@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+import sqlite3
 from datetime import date, datetime, timedelta
 
 import httpx
@@ -8,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from backend.config import settings
 from backend.identity.models import IdentityError
+from backend.identity import store
 from backend.identity.resolve import get_crno
 from backend.tools import stock_candidates as sc
 from backend.tools.base import ToolFailure, fail, ok, register
@@ -17,6 +19,7 @@ logger = logging.getLogger(__name__)
 URL = "https://apis.data.go.kr/1160100/service/GetFinaStatInfoService_V2/getSummFinaStat_V2"
 _KEY_ERR, _RATE_ERR = {"30", "31", "32"}, {"22"}  # 가정값(미확인, H5)
 _NO_FIN = "재무 정보를 찾을 수 없습니다."
+NO_FIN_FINANCIAL = "금융업(은행·보험·증권 등)은 이 데이터 소스에서 지표 산출을 지원하지 않습니다."  # respond가 import
 _CORE = ("enpSaleAmt", "enpBzopPft", "enpCrtmNpf", "enpTastAmt", "enpTcptAmt")
 
 
@@ -27,6 +30,15 @@ class FinInput(BaseModel):
 
 def _today() -> date:
     return date.today()
+
+
+def _is_financial(stock_code: str) -> bool:
+    """induty_code 접두 64/65/66. DB 오류·행 없음·NULL은 False(NO_FINANCIALS가 API_ERROR로 바뀌지 않게)."""
+    try:
+        rows = store.read("SELECT induty_code FROM company WHERE stock_code=? AND listed=1", (stock_code,))
+    except (IdentityError, sqlite3.Error):
+        return False
+    return bool(rows and rows[0][0] and str(rows[0][0]).startswith(("64", "65", "66")))
 
 
 async def _fetch_fin(crno: str, biz_year: int) -> dict:
@@ -118,7 +130,7 @@ async def get_financials(inp: FinInput):
     if row is None:
         row, y_actual = await _pick_row(crno, y - 1), y - 1  # H2: 한 번만 소급
     if row is None or all(_num(row.get(k)) is None for k in _CORE):
-        return fail("NO_FINANCIALS", _NO_FIN)
+        return fail("NO_FINANCIALS", NO_FIN_FINANCIAL if await asyncio.to_thread(_is_financial, inp.stock_code) else _NO_FIN)
 
     mkt_cap = await _mkt_cap(inp.stock_code, start)
     data = {"code": inp.stock_code, "fiscal_period": f"FY{y_actual}",

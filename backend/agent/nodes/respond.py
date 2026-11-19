@@ -11,6 +11,7 @@ from backend.agent.constraints import is_sample_short
 from backend.events import bus
 from backend.events.bus import Final, LlmDecision, StageEnd, StageStart
 from backend.identity.resolve import cache_status, resolve_stock
+from backend.tools.financials import NO_FIN_FINANCIAL
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,12 @@ def _has(errors, tool, code=None, any_code=True) -> dict | None:
     return next((e for e in errors if e["tool"] == tool and (any_code or e["stock_code"] == code)), None)
 
 
+def _fin_note(state) -> str | None:
+    hit = any(e["tool"] == "get_financials" and e["code"] == "NO_FINANCIALS" and e["message"] == NO_FIN_FINANCIAL
+              for e in state.get("errors") or [])
+    return "※ " + NO_FIN_FINANCIAL if hit else None
+
+
 def _name(state, code) -> str:
     for c in state.get("candidates") or []:
         if c["code"] == code:
@@ -113,6 +120,8 @@ def error_text(state) -> str:
             return ("저장할 종목을 확인하지 못했습니다: " + msg) if intent == "report_save" else msg
         e = _has(errors, "get_financials", t, any_code=False) if intent == "lookup" else None
         if e:
+            if e["code"] == "NO_FINANCIALS" and e["message"] == NO_FIN_FINANCIAL:
+                return f"‘{t}’의 재무정보를 제공하지 못합니다. {NO_FIN_FINANCIAL}"
             return (f"‘{t}’의 재무정보를 찾을 수 없습니다." if e["code"] == "NO_FINANCIALS"
                     else f"재무정보 조회에 실패했습니다: {e['message']}")
         if intent == "report_save":
@@ -330,6 +339,9 @@ async def _screen(state, status, out) -> str:
         out["last_result_summary"] = {"top_codes": [], "pass_count": 0}
     else:
         lines = [error_text(state), *_replan_lines(state)]
+    fn = _fin_note(state)
+    if fn:
+        lines += ["", fn]
     if terminal_error(state.get("errors") or []) is None:
         nb = await _not_built() if any(k.startswith("find_stock_candidates:") for k in state.get("tool_cache") or {}) else None
         if nb:
