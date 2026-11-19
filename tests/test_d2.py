@@ -360,3 +360,41 @@ def test_dart_non_network_errors(monkeypatch, resp):
     with pytest.raises(IdentityError) as e:
         asyncio.run(dart.HttpDartSource().fetch_company("1"))
     assert not isinstance(e.value, dart.DartNetworkError) and e.value.code == "API_ERROR"
+
+
+class _Flaky6(Fake):  # 정렬상 6번째(005930)만 TIMEOUT
+    async def fetch_company(self, cc):
+        if cc == "00126380":
+            raise IdentityError("TIMEOUT")
+        return await super().fetch_company(cc)
+
+
+def _stage_b(caplog):
+    msgs = [r.getMessage() for r in caplog.records]
+    return [m for m in msgs if m.startswith("stage B start")], [m for m in msgs if m.startswith("stage B progress")]
+
+
+def test_progress_log_start_and_periodic(db, caplog):
+    caplog.set_level(logging.INFO)
+    run(commit_every=3)
+    start, prog = _stage_b(caplog)
+    assert "total=8" in start[0] and len(prog) == 2
+    assert "3/8 ok=3 none=0 failed=0" in prog[0] and "6/8 ok=5 none=1 failed=0" in prog[1]
+
+
+def test_progress_log_counts_failed(db, caplog):
+    caplog.set_level(logging.INFO)
+    run(_Flaky6(), commit_every=3)
+    _, prog = _stage_b(caplog)
+    assert len(prog) == 2 and "6/8 ok=4 none=1 failed=1" in prog[1]
+
+
+def test_progress_log_none_when_below_period_or_done(db, caplog):
+    caplog.set_level(logging.INFO)
+    run()
+    start, prog = _stage_b(caplog)
+    assert "total=8" in start[0] and prog == []
+    caplog.clear()
+    run()
+    start, prog = _stage_b(caplog)
+    assert "total=0" in start[0] and prog == []

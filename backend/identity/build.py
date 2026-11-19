@@ -4,6 +4,7 @@ import asyncio
 import logging
 import re
 import sys
+import time
 from datetime import datetime, timezone
 
 from backend.config import settings
@@ -64,7 +65,10 @@ async def build(source: DartSource, *, refresh: bool = False, force: bool = Fals
             logger.info("stage A done listed=%d", len(corps))
         rows = con.execute("SELECT stock_code, corp_code FROM company WHERE listed=1 AND "
                            "detail_status IN ('pending','failed') ORDER BY stock_code").fetchall()
-        n = streak = 0
+        total = len(rows)
+        logger.info("stage B start total=%d", total)
+        n = streak = ok = none = failed = 0
+        t0 = time.monotonic()
         try:
             for sc, cc in rows:
                 if min_interval_s:
@@ -74,11 +78,13 @@ async def build(source: DartSource, *, refresh: bool = False, force: bool = Fals
                     if body is None:
                         con.execute("UPDATE company SET detail_status='none', detail_at=? WHERE stock_code=?",
                                     (_now(), sc))
+                        none += 1
                     else:
                         con.execute("UPDATE company SET detail_status='ok', crno=?, induty_code=?, corp_cls=?, "
                                     "detail_at=? WHERE stock_code=?",
                                     (_crno(body.get("jurir_no")), (body.get("induty_code") or "").strip() or None,
                                      body.get("corp_cls") or None, _now(), sc))
+                        ok += 1
                     streak = 0
                 except IdentityError as e:
                     if e.code in ("RATE_LIMIT", "MISSING_API_KEY"):
@@ -86,6 +92,7 @@ async def build(source: DartSource, *, refresh: bool = False, force: bool = Fals
                         break
                     con.execute("UPDATE company SET detail_status='failed', detail_at=? WHERE stock_code=?",
                                 (_now(), sc))
+                    failed += 1
                     streak = streak + 1 if isinstance(e, DartNetworkError) or e.code == "TIMEOUT" else 0
                     if streak >= NETWORK_ABORT_AFTER:
                         stopped = "NETWORK"
@@ -93,6 +100,9 @@ async def build(source: DartSource, *, refresh: bool = False, force: bool = Fals
                 n += 1
                 if n % commit_every == 0:
                     con.commit()
+                    el = time.monotonic() - t0
+                    logger.info("stage B progress %d/%d ok=%d none=%d failed=%d elapsed=%ds eta=%ds",
+                                n, total, ok, none, failed, el, el / n * (total - n))
         finally:
             con.commit()
         c = store.counts(con.execute(store.COUNTS_SQL).fetchone())
