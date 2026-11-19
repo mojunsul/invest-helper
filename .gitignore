@@ -4,3 +4,5 @@ __pycache__/
 *.sqlite
 *.db
 .venv/
+*.db-shm
+*.db-wal
