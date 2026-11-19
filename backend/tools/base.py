@@ -84,9 +84,30 @@ def mask(text: str) -> str:
     return text
 
 
+def _m(x):
+    if isinstance(x, str):
+        return mask(x)
+    if x is None or isinstance(x, (int, float, bool)):
+        return x
+    s = str(x)
+    return mask(s) if mask(s) != s or mask(repr(x)) != repr(x) else x
+
+
 class _MaskFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        record.msg, record.args = mask(record.getMessage()), None
+        # args 타입·길이 보존: uvicorn AccessFormatter가 args를 5-튜플로 언팩한다.
+        if isinstance(record.msg, str):
+            record.msg = mask(record.msg)
+        if isinstance(record.args, tuple):
+            record.args = tuple(_m(a) for a in record.args)
+        elif isinstance(record.args, dict):
+            record.args = {k: _m(v) for k, v in record.args.items()}
+        try:
+            full = record.getMessage()
+        except Exception:
+            full = None  # 잘못된 포맷은 logging이 기존대로 처리
+        if full is not None and mask(full) != full:
+            record.msg, record.args = mask(full), ()
         if record.exc_info:
             record.exc_text = mask(logging.Formatter().formatException(record.exc_info))
         elif record.exc_text:
