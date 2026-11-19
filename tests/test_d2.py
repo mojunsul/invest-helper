@@ -47,6 +47,7 @@ def db(tmp_path, monkeypatch):
 
 
 def run(src=None, **kw):
+    kw.setdefault("min_interval_s", 0)
     return asyncio.run(B.build(src or Fake(), **kw))
 
 
@@ -276,3 +277,86 @@ def test_key_not_leaked_on_exception(monkeypatch, caplog):
 def test_main_missing_key(monkeypatch):
     monkeypatch.setattr(B, "settings", Settings(DART_API_KEY=""))
     assert B.main([]) == 1
+
+
+class Seq(Fake):
+    """calls[i]번째(1부터) 호출의 동작을 plan(i)로 결정: None=정상, 예외 인스턴스=raise."""
+    def __init__(self, plan):
+        super().__init__()
+        self.plan = plan
+
+    async def fetch_company(self, corp_code):
+        err = self.plan(len(self.calls) + 1)
+        if err:
+            self.calls.append(corp_code)
+            raise err
+        return await super().fetch_company(corp_code)
+
+
+def test_build_interval(db, monkeypatch):
+    got = []
+
+    async def rec(s):
+        got.append(s)
+    monkeypatch.setattr(B, "_sleep", rec)
+    f = Fake()
+    run(f, min_interval_s=0.2)
+    assert got == [0.2] * len(f.calls) and got
+    got.clear()
+    run(Fake(), force=True, min_interval_s=0)
+    assert got == []
+
+
+def test_network_streak_stops_and_resumes(db, monkeypatch):
+    monkeypatch.setattr(B, "NETWORK_ABORT_AFTER", 3)
+    f = Seq(lambda i: dart.DartNetworkError() if i >= 3 else None)
+    rep = run(f)
+    assert rep.stopped_by == "NETWORK" and len(f.calls) == 2 + 3
+    assert rep.failed == 3 and rep.pending_left == len(CORPS) - 5 and rep.complete is False
+    rep = run(Fake())
+    assert rep.failed == 0 and rep.complete
+
+
+def test_network_streak_stops_and_logs(db, monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    run(Seq(lambda i: dart.DartNetworkError()))
+    assert "옵션 없이 다시 실행" in caplog.text
+
+
+def test_timeout_counts_in_streak(db):
+    f = Seq(lambda i: IdentityError("TIMEOUT"))
+    rep = run(f)
+    assert rep.stopped_by == "NETWORK" and len(f.calls) == B.NETWORK_ABORT_AFTER
+
+
+def test_success_resets_streak(db, monkeypatch):
+    monkeypatch.setattr(B, "NETWORK_ABORT_AFTER", 2)
+    f = Seq(lambda i: dart.DartNetworkError() if i % 2 else None)
+    rep = run(f)
+    assert rep.stopped_by is None and len(f.calls) == len(CORPS)
+
+
+def test_plain_api_error_continues(db):
+    f = Seq(lambda i: IdentityError("API_ERROR"))
+    rep = run(f)
+    assert rep.stopped_by is None and len(f.calls) == len(CORPS) and rep.failed == len(CORPS)
+
+
+@pytest.mark.parametrize("exc,net,code", [(httpx.ReadError("x"), True, "API_ERROR"),
+                                          (httpx.RemoteProtocolError("x"), True, "API_ERROR"),
+                                          (httpx.ReadTimeout("x"), False, "TIMEOUT")])
+def test_dart_transport_mapping(monkeypatch, exc, net, code):
+    def h(request):
+        raise exc
+    _mock(monkeypatch, h)
+    with pytest.raises(IdentityError) as e:
+        asyncio.run(dart.HttpDartSource().fetch_company("1"))
+    assert isinstance(e.value, dart.DartNetworkError) is net and e.value.code == code
+
+
+@pytest.mark.parametrize("resp", [httpx.Response(200, content=b"not json"), httpx.Response(500)])
+def test_dart_non_network_errors(monkeypatch, resp):
+    _mock(monkeypatch, lambda r: resp)
+    with pytest.raises(IdentityError) as e:
+        asyncio.run(dart.HttpDartSource().fetch_company("1"))
+    assert not isinstance(e.value, dart.DartNetworkError) and e.value.code == "API_ERROR"

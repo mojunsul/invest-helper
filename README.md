@@ -34,6 +34,8 @@ python -m backend.identity.build --refresh  # 상장사 목록(corpCode) 갱신
 python -m backend.identity.build --force    # 상세 정보 전체 재수집
 ```
 
+구축은 DART 호출 사이에 약 0.2초씩 쉬어 수천 종목에 15분 안팎 걸린다. 연결 실패가 연속되면(IP 차단 등) 자동으로 멈추며, 잠시 후 또는 다른 네트워크에서 옵션 없이 다시 실행하면 실패·미처리 종목만 이어서 처리한다.
+
 `DART_API_KEY`가 필요하다. 구축하지 않아도 앱은 뜨지만 산업 질의는 "먼저 build를 실행하세요" 안내로 끝난다.
 
 ## 4. 산업명 사전 채우기

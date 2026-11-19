@@ -8,12 +8,15 @@ from datetime import datetime, timezone
 
 from backend.config import settings
 from backend.identity import store
-from backend.identity.dart import DartSource, HttpDartSource
+from backend.identity.dart import DartNetworkError, DartSource, HttpDartSource
 from backend.identity.models import BuildReport, IdentityError, norm_name
 from backend.tools.base import install_log_mask
 
 logger = logging.getLogger(__name__)
 COMMIT_EVERY = 100  # 임의 상수(구현 시 확인 항목)
+COMPANY_INTERVAL_S = 0.2  # 임의 상수(구현 시 확인 항목). 최대 ~300건/분
+NETWORK_ABORT_AFTER = 5  # 임의 상수(구현 시 확인 항목)
+_sleep = asyncio.sleep  # 테스트에서 이 별칭만 patch
 
 _RESET = "detail_status='pending', crno=NULL, induty_code=NULL, corp_cls=NULL, detail_at=NULL"
 _CHG = "company.corp_code!=excluded.corp_code"  # corp_code가 바뀌면 detail 초기화
@@ -38,7 +41,8 @@ def _crno(jurir_no) -> str | None:
 
 
 async def build(source: DartSource, *, refresh: bool = False, force: bool = False,
-                commit_every: int = COMMIT_EVERY) -> BuildReport:
+                commit_every: int = COMMIT_EVERY,
+                min_interval_s: float = COMPANY_INTERVAL_S) -> BuildReport:
     con = store.connect_rw()
     stopped = None
     try:
@@ -60,9 +64,11 @@ async def build(source: DartSource, *, refresh: bool = False, force: bool = Fals
             logger.info("stage A done listed=%d", len(corps))
         rows = con.execute("SELECT stock_code, corp_code FROM company WHERE listed=1 AND "
                            "detail_status IN ('pending','failed') ORDER BY stock_code").fetchall()
-        n = 0
+        n = streak = 0
         try:
             for sc, cc in rows:
+                if min_interval_s:
+                    await _sleep(min_interval_s)
                 try:
                     body = await source.fetch_company(cc)
                     if body is None:
@@ -73,12 +79,17 @@ async def build(source: DartSource, *, refresh: bool = False, force: bool = Fals
                                     "detail_at=? WHERE stock_code=?",
                                     (_crno(body.get("jurir_no")), (body.get("induty_code") or "").strip() or None,
                                      body.get("corp_cls") or None, _now(), sc))
+                    streak = 0
                 except IdentityError as e:
                     if e.code in ("RATE_LIMIT", "MISSING_API_KEY"):
                         stopped = e.code
                         break
                     con.execute("UPDATE company SET detail_status='failed', detail_at=? WHERE stock_code=?",
                                 (_now(), sc))
+                    streak = streak + 1 if isinstance(e, DartNetworkError) or e.code == "TIMEOUT" else 0
+                    if streak >= NETWORK_ABORT_AFTER:
+                        stopped = "NETWORK"
+                        break
                 n += 1
                 if n % commit_every == 0:
                     con.commit()
@@ -87,6 +98,10 @@ async def build(source: DartSource, *, refresh: bool = False, force: bool = Fals
         c = store.counts(con.execute(store.COUNTS_SQL).fetchone())
         rep = BuildReport(c["ok"], c["none"], c["failed"], c["pending"], stopped, c["complete"])
         logger.info("build ok=%d none=%d failed=%d pending=%d stopped_by=%s complete=%s", *vars(rep).values())
+        if stopped == "NETWORK":
+            logger.error("DART 서버 연결이 연속 %d회 실패해 중단했습니다(IP 차단 또는 네트워크 문제 가능). "
+                         "잠시 후 또는 다른 네트워크에서 옵션 없이 다시 실행하면 남은 종목부터 이어서 진행합니다.",
+                         NETWORK_ABORT_AFTER)
         return rep
     finally:
         con.close()
@@ -106,6 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         rep = asyncio.run(build(HttpDartSource(), refresh=a.refresh, force=a.force))
     except IdentityError as e:
         logger.error("build aborted code=%s", e.code)
+        if isinstance(e, DartNetworkError):
+            logger.error("DART 서버에 연결하지 못했습니다(IP 차단 또는 네트워크 문제 가능). 잠시 후 또는 다른 네트워크에서 다시 실행하세요.")
         return 1
     return 0 if rep.complete else 1
 

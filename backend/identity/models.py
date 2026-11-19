@@ -42,7 +42,7 @@ class BuildReport:
     none: int
     failed: int
     pending_left: int
-    stopped_by: Literal["RATE_LIMIT", "MISSING_API_KEY"] | None
+    stopped_by: Literal["RATE_LIMIT", "MISSING_API_KEY", "NETWORK"] | None
     complete: bool
 
 

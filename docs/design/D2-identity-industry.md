@@ -45,7 +45,7 @@ class IdentityError(Exception):   # D3~D5가 ToolFailure(e.code, e.message)로 1
     matched_by: Literal["code","exact","prefix","contains"] | None
 @dataclass(frozen=True) class BuildReport:     # CLI 종료 요약 전용
     ok: int; none: int; failed: int; pending_left: int
-    stopped_by: Literal["RATE_LIMIT","MISSING_API_KEY"] | None; complete: bool
+    stopped_by: Literal["RATE_LIMIT","MISSING_API_KEY","NETWORK"] | None; complete: bool
 # 아래 전부 동기, 읽기 전용(DB만)
 def resolve_stock(query) -> StockMatch                       # D8
 def get_corp_code(stock_code) -> str                         # D4/D5
@@ -98,7 +98,7 @@ D8은 `resolve_stock`의 `IdentityError`를 catch해 `ErrorRecord(tool="resolve_
 
 - **단계 A**(캐시가 비었거나 `--refresh`/`--force`): corpCode.xml 1회(자체 타임아웃, TOOL_TIMEOUT_S와 별개 상수) → **한 트랜잭션**에서 upsert(`corp_code·name·name_norm·listed=1`만 갱신, detail 컬럼 보존; `corp_code`가 바뀐 행은 detail을 pending·crno/induty NULL로 초기화)와 응답에 없는 종목 `listed=0`. 응답 종목 0건이면 `API_ERROR`로 중단. 단계 A 실패는 그대로 종료(기존 데이터 유지).
 - **`--force`**: 단계 A 전에 전체 detail을 pending·crno/induty NULL로 초기화(재구축 동안 complete=False).
-- **단계 B**: `listed=1`이고 `detail_status IN ('pending','failed')`인 행만 순회해 company.json 호출, 결과를 기록: 성공 → `ok`(crno·induty_code), 013 → `none`, 일시 오류(API_ERROR/TIMEOUT) → `failed`(계속). **한도 신호(429/020)·키 오류(010/011)는 즉시 중단**, 해당 행은 그대로 둠(`stopped_by`). N행(`COMMIT_EVERY`)마다 커밋, 종료·예외 시 `finally`로 남은 변경 커밋. 같은 CLI를 다시 실행하면 pending+failed만 이어서 처리(멱등·재개). 갱신은 수동(`--refresh`)이며 주기 개념 없음.
+- **단계 B**: `listed=1`이고 `detail_status IN ('pending','failed')`인 행만 순회해 company.json 호출, 결과를 기록: 성공 → `ok`(crno·induty_code), 013 → `none`, 일시 오류(API_ERROR/TIMEOUT) → `failed`(계속). **한도 신호(429/020)·키 오류(010/011)는 즉시 중단**, 해당 행은 그대로 둠(`stopped_by`). 호출 사이 `COMPANY_INTERVAL_S` 대기, 연결 실패(TIMEOUT 포함) 연속 `NETWORK_ABORT_AFTER`회면 중단(`stopped_by="NETWORK"`, D2b). N행(`COMMIT_EVERY`)마다 커밋, 종료·예외 시 `finally`로 남은 변경 커밋. 같은 CLI를 다시 실행하면 pending+failed만 이어서 처리(멱등·재개). 갱신은 수동(`--refresh`)이며 주기 개념 없음.
 - **DART 응답 매핑**(`dart.py`)
 
 | 입력 | 처리 |
@@ -107,7 +107,7 @@ D8은 `resolve_stock`의 `IdentityError`를 catch해 `ErrorRecord(tool="resolve_
 | 020, HTTP 429 | `RATE_LIMIT` → 중단 |
 | 013 | 행 `none` |
 | httpx Timeout | `TIMEOUT` → 행 `failed` |
-| 그 외 status/HTTP/연결/파싱 오류 | `API_ERROR` → 행 `failed` |
+| 그 외 status/HTTP/연결/파싱 오류 | `API_ERROR` → 행 `failed` (연결 오류는 연속 `NETWORK_ABORT_AFTER`회(TIMEOUT 포함) 시 중단, `stopped_by="NETWORK"`) |
 
 ## 7. 보안·로깅 (D1 NF3002)
 

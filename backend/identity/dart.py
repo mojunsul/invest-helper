@@ -25,6 +25,13 @@ class DartSource(Protocol):
     async def fetch_company(self, corp_code: str) -> dict | None: ...   # {jurir_no, induty_code, corp_cls}; 013 -> None
 
 
+class DartNetworkError(IdentityError):
+    """연결 수준 실패(응답을 못 받음). code는 API_ERROR 그대로."""
+
+    def __init__(self):
+        super().__init__("API_ERROR")
+
+
 def _fail(code: str, exc: BaseException | None = None, status: int | None = None) -> IdentityError:
     logger.warning(mask(f"dart code={code} type={type(exc).__name__ if exc else '-'} http={status}"))
     return IdentityError(code)  # 호출부에서 `from None`으로 raise
@@ -68,6 +75,9 @@ class HttpDartSource:
             raise
         except httpx.TimeoutException as e:
             raise _fail("TIMEOUT", e) from None
+        except httpx.TransportError as e:  # ConnectError/ReadError/RemoteProtocolError 등
+            _fail("API_ERROR", e)
+            raise DartNetworkError() from None
         except Exception as e:  # 예외 문자열에 키 포함 가능 -> 원인 체인 차단
             raise _fail("API_ERROR", e) from None
 
