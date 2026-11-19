@@ -8,9 +8,12 @@
 
 ```
 python -m venv .venv
-.venv\Scripts\activate        # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
+source .venv/Scripts/activate   # Git Bash
+.venv\Scripts\Activate.ps1      # PowerShell (macOS/Linux: source .venv/bin/activate)
+python -m pip install -r requirements.txt
 ```
+
+활성화하지 않고 쓰려면 `.venv/Scripts/python.exe -m ...` 로 직접 호출한다. 이후 절의 `python` 명령(테스트·서버 기동)은 모두 활성화된 `.venv`에서 실행한다.
 
 ## 2. .env 준비
 
