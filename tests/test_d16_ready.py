@@ -194,10 +194,40 @@ def test_terms_file_format(real_terms):
     resolve._terms()  # 길이·중복 검증 통과
 
 
-@pytest.mark.xfail(strict=False, reason="industry_terms.json 미작성(README 4번). 채우면 XPASS")
 @pytest.mark.parametrize("term", ["반도체", "은행"])
 def test_representative_terms_present(real_terms, term):
     assert resolve.resolve_industry(term)["status"] == "ok"
+
+
+REQUIRED_TERMS = {"반도체", "은행", "증권", "보험", "금융", "자동차", "바이오", "제약", "화학", "철강", "건설",
+                  "조선", "2차전지", "소프트웨어", "게임", "통신", "유통", "음식료", "전기전자"}
+
+
+def _term_items():
+    return json.loads((ROOT / "backend" / "identity" / "data" / "industry_terms.json").read_text(encoding="utf-8"))
+
+
+def test_terms_schema(real_terms):
+    items = _term_items()
+    for it in items:
+        assert set(it) == {"term", "prefixes"}, it
+        pf = it["prefixes"]
+        assert isinstance(pf, list) and pf and len(set(pf)) == len(pf), it
+        assert all(isinstance(p, str) and re.fullmatch(r"\d{2,5}", p) for p in pf), it
+    assert REQUIRED_TERMS <= {it["term"] for it in items}
+
+
+def test_terms_exact_resolves_to_self(real_terms):
+    # 정확 일치 경로만 탄다(DB 불필요). ambiguous면 DB를 건드려 실패 -> 용어 충돌 신호
+    for it in _term_items():
+        r = resolve.resolve_industry(it["term"])
+        assert r["status"] == "ok" and r["prefixes"] == it["prefixes"], (it, r)
+
+
+@pytest.mark.skipif(os.environ.get("INVEST_REAL_DB") != "1", reason="실DB 점검: INVEST_REAL_DB=1일 때만")
+def test_terms_prefixes_have_listed_companies_real_db(real_terms):
+    bad = [(it["term"], it["prefixes"]) for it in _term_items() if resolve._n_listed(it["prefixes"]) < 1]
+    assert not bad, bad
 
 
 def test_readme_required_items():
