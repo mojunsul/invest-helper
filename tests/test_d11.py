@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import sqlite3
 import threading
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 import pytest
@@ -125,7 +126,16 @@ def test_seq_reset_and_order():
     assert [e.seq for e in la.get_session("a")] == [1, 2, 1]
 
 
-def test_list_sessions_and_delete():
+def test_list_sessions_and_delete(monkeypatch):
+    # Windows 시계 해상도로 같은 ms ts가 나오는 것을 막기 위해 단조 증가 시각 주입
+    n = iter(range(1000))
+
+    class _Clock:
+        @staticmethod
+        def now(tz=None):
+            return datetime(2024, 1, 1, tzinfo=timezone.utc) + timedelta(milliseconds=next(n))
+
+    monkeypatch.setattr(bus, "datetime", _Clock)
     bus.publish("a", "stage_start", StageStart(stage="analyze"))
     bus.publish("b", "stage_start", StageStart(stage="analyze"))
     bus.publish("b", "final", Final(status="answered"))

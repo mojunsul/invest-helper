@@ -86,7 +86,9 @@ def test_duplicates():
     assert e1 == [] and e2 == [n1] and len(db.list_reports()) == 6
 
 
-def test_update_only_name_memo():
+def test_update_only_name_memo(monkeypatch):
+    ticks = iter(f"2024-01-01T00:00:{n:02d}+00:00" for n in range(60))  # Windows 시계 틱 의존 제거
+    monkeypatch.setattr(db, "_now", lambda: next(ticks))
     i, _ = db.save_report(draft(), None, None)
     before = db.get_report(i)
     after = db.update_report(i, "새이름", None)

@@ -370,7 +370,7 @@ def test_reports_lookup_logs_flow(c, w):
     assert rep["metrics"] == memory.get_report_draft(SID, code)["metrics"]
     r2 = c.post("/api/reports", json={"session_id": SID, "stock_code": code})
     assert r2.status_code == 201 and r2.json()["duplicate_of"] == [rid]
-    time.sleep(0.01)
+    time.sleep(0.05)
     p = c.patch(f"/api/reports/{rid}", json={"name": "새이름", "memo": "메모"}).json()
     assert p["name"] == "새이름" and p["memo"] == "메모" and p["metrics"] == rep["metrics"]
     assert p["updated_at"] > rep["updated_at"] and p["created_at"] == rep["created_at"]
