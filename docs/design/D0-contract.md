@@ -170,6 +170,7 @@ class AgentState(TypedDict, total=False):
 - **analyze 계약**: 필수 조건 누락 시 analyze가 `missing`을 채우고 `clarify_question`을 작성하고 `status="asked"`를 설정한다(Tool 호출 전). 라우터는 `status=="asked"`로 respond로 분기. chitchat은 respond가 `status="answered"`로 설정. 판단 세부는 §6-6.
 - **재계획 술어(단일)**: `can_replan := replan_count < REPLAN_MAX and next_step is not None`. `next_step` = `expansion_step`보다 큰 단계 중 **효과 있는** 가장 작은 번호(효과 판정은 §6-12). 무효 단계는 건너뛰고 `expansion_step`은 실제 적용한 단계 번호(1↔`market_expand`, 2↔`similar_industry`, 3↔`limit_up`), `replan_count`는 +1 한 번. REPLAN_MAX는 config에서 1~3으로 클램프.
 - `replan`은 노드가 아니라 judge(또는 execute)의 분기 결과이며, 그래서 `Stage` Literal에 없다. 아래 규칙 1~6의 평가와 `status` 설정 주체는 D9에 위임.
+- **D9 협약**: 재계획 시 D9가 `replan_count`·`expansion_step`·`replan_log`를 갱신하고 plan을 재진입시킨다. D7(plan)은 `replan_log`로 `search_scope`를 매번 재계산하고, D8(execute/judge)은 `status`와 재계획 카운터를 건드리지 않는다.
 - **종료/재계획 규칙 1~6은 intent가 screen/refine일 때만 적용**(순서대로). n_dec=PASS+FAIL 수, n_pass=PASS 수. 둘 다 재계획으로 누적된 현재 `candidates` 전체 기준(확장은 후보 집합을 넓히는 방향이므로 재평가 시 합집합).
   1. 어느 Tool이든 `MISSING_API_KEY` → `status="error"`.
   2. find_stock_candidates가 `NO_RESULT` 아닌 사유로 `ok=False`(API_ERROR/RATE_LIMIT/TIMEOUT/INVALID_INPUT) → 재계획 없이 `status="error"`.

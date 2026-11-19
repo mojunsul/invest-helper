@@ -79,7 +79,7 @@ analyze ─┬─(chitchat)─────────────────�
                        └── replan ◄─────┘ (충족 0 & replan_count<3 & 재시도 가치 있음)
 ```
 
-`replan`은 노드가 아니라 분기 결과이며, 후보 0개(`NO_RESULT`)는 execute 직후에도 재계획 분기로 간다. 공시(`search_disclosures`)는 통과 종목에만 호출하므로 judge 이후 단계이며, 호출 노드·시점은 D8/D9에서 확정한다(흐름 변경 시 이 절 갱신). 상세는 `docs/design/D0-contract.md`.
+`replan`은 노드가 아니라 분기 결과이며, 후보 0개(`NO_RESULT`)는 execute 직후에도 재계획 분기로 간다. 공시(`search_disclosures`)는 통과 종목에만 호출하며 **judge 끝에서 호출한다**(D8 확정, D0 §6-11; 새 노드·분기 없음 → 위 그래프 불변). 상세는 `docs/design/D0-contract.md`.
 
 노드별 책임:
 
@@ -88,7 +88,7 @@ analyze ─┬─(chitchat)─────────────────�
 | analyze | O | 의도 분류 + 조건 추출(구조화 출력). 못 뽑은 조건은 `None`. 이전 조건과 병합(§7). 의도·이유를 이벤트로 발행 |
 | plan | 규칙 우선 | 의도·조건으로 Tool 순서 결정. screen=[candidates, financials(후보별)], 공시 요청 시 +disclosures. 불필요 Tool 제외 |
 | execute | X | 계획대로 호출. 이전 결과를 `tool_cache`(키: tool+입력)에서 먼저 조회 → 재사용. 개별 실패는 사유 기록 후 계속 |
-| judge | X | `constraints.py`로 계산·판단. 충족/불충족/판단불가 분류 |
+| judge | X | `constraints.py`로 계산·판단. 충족/불충족/판단불가 분류. 끝에서 `want_disclosures`이고 통과 종목이 있으면 통과 종목에 `search_disclosures` 호출(공시 실패는 종목별 표기, 판정·status 불변) |
 | respond | O(문장화) | 결과 표·근거는 코드가 만들고 LLM은 요약 문장만. 면책 문구 코드 부착. 리포트 초안 생성 |
 
 `AgentState` 필드: `session_id, user_msg, intent, intent_reason, conditions{industry,market,base_date,constraints[],want_disclosures,pending_metrics}, plan[], tool_cache{}, candidates[], metrics{code:{...}}, verdicts{code:{status,reasons,failed}}, industry_avg{value,n}, search_scope, expansion_step, replan_count, replan_log[], errors[], status, clarify_question, missing, target_stock, disclosures, prev_intent, answer, report_draft`
