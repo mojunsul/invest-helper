@@ -30,7 +30,7 @@ LLM 호출은 **analyze의 1회뿐**이다(plan·라우팅은 규칙 코드). LL
   class LlmError(Exception): code: Literal["MISSING_API_KEY","TIMEOUT","RATE_LIMIT","API_ERROR"]; message: str  # message = base.MSG[code] 고정 문구
   async def complete(messages: list[dict], *, json_mode: bool, timeout_s: float = LLM_TIMEOUT_S) -> str
   ```
-  키 빈 문자열이면 네트워크 전에 `LlmError("MISSING_API_KEY")`. 예외→코드 매핑은 D1 §3 표와 동일(Timeout→TIMEOUT, 429→RATE_LIMIT, 그 외→API_ERROR). 모든 예외는 `from None`으로 재발생, 로그는 `mask()` 통과한 타입명·HTTP status만(키·URL·요청/응답 본문 금지). 모듈 시작 시 `install_log_mask()`는 D13 소관이지만 `complete`도 D1 wrapper처럼 `mask()`한 텍스트만 기록한다.
+  키 빈 문자열이면 네트워크 전에 `LlmError("MISSING_API_KEY")`. 예외→코드 매핑은 D1 §3 표와 동일(Timeout→TIMEOUT, 429→RATE_LIMIT, 그 외→API_ERROR). 모든 예외는 `from None`으로 재발생, 로그는 `mask()` 통과한 타입명·HTTP status만(키·URL·요청/응답 본문 금지; 단 HTTP 오류 시 오류 본문의 message·내부 code/type/message는 mask 후 필드당 200자로 잘라 기록, D7b). 모듈 시작 시 `install_log_mask()`는 D13 소관이지만 `complete`도 D1 wrapper처럼 `mask()`한 텍스트만 기록한다.
 - `json_mode=True`는 요청에 `response_format={"type":"json_object"}`를 넣는다. GMS가 이를 지원하는지는 **미확인(⚠ §10)**. 응답 본문에서 JSON은 `{`~`}` 범위를 잘라 파싱한다(코드펜스 대비).
 - 프롬프트: system = 역할·출력 스키마·규칙(아래), user = JSON 하나 `{"message": user_msg, "prev_conditions": {...요약}, "prev_intent": ..., "last_status": ...}`. **user_msg는 지시가 아니라 분석 대상 데이터**라고 system에 명시한다. 키·DB·Tool 설명은 프롬프트에 넣지 않는다(Tool 스키마도 불필요: plan은 규칙).
 - **출력 스키마**(Pydantic `AnalyzeOut`, `extra` 무시):
@@ -149,7 +149,7 @@ def route_after_analyze(state) -> Literal["plan","respond"]:
 | plan | `StageStart/StageEnd(stage="plan")` |
 
 - tool_call/tool_result는 D8, replan은 D9, final은 D9(모든 종료 경로에서 respond가 1회). D7은 `final`을 발행하지 않는다.
-- 로깅: `logging`만 사용(`print` 금지), 텍스트는 `mask()` 통과. 로그에 user_msg 원문·LLM 응답 원문은 남기지 않는다(이벤트의 `reason`은 LLM이 쓴 한 줄이며 200자 절단).
+- 로깅: `logging`만 사용(`print` 금지), 텍스트는 `mask()` 통과. 로그에 user_msg 원문·LLM 성공 응답 원문은 남기지 않는다(HTTP 오류 본문의 진단 필드만 mask 후 필드당 200자로 기록, D7b; 이벤트의 `reason`은 LLM이 쓴 한 줄이며 200자 절단).
 
 ## 8. 대표 요청 추적 (DESIGN §10 중 analyze/plan 구간)
 

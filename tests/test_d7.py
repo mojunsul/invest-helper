@@ -448,3 +448,71 @@ def test_complete_empty_key_no_network(monkeypatch):
     with pytest.raises(llm.LlmError) as ei:
         run(llm.complete([], json_mode=True))
     assert ei.value.code == "MISSING_API_KEY"
+
+
+GMS429 = {"message": "[OpenAI 에러] Request failed with status code 429", "statusCode": 429,
+          "error": {"error": {"message": f"Your organization has reached its limit {KEY}", "type": "insufficient_quota",
+                              "param": None, "code": "organization_spend_limit_exceeded"}}}
+
+
+def _fail(monkeypatch, status, **kw):
+    mock_http(monkeypatch, lambda req: httpx.Response(status, **kw))
+    with pytest.raises(llm.LlmError) as ei:
+        run(llm.complete([], json_mode=True))
+    return ei.value.code
+
+
+def test_diag_gms_wrapped_429(lenv, monkeypatch, caplog):
+    caplog.set_level(logging.WARNING)
+    assert _fail(monkeypatch, 429, json=GMS429) == "RATE_LIMIT"
+    for t in ("[OpenAI 에러]", "err_code=organization_spend_limit_exceeded", "err_type=insufficient_quota", "***"):
+        assert t in caplog.text
+    assert KEY not in caplog.text
+
+
+def test_diag_gms_own_400(lenv, monkeypatch, caplog):
+    caplog.set_level(logging.WARNING)
+    body = {"message": "[GMS 에러] Model x is not available in Model", "statusCode": 400}
+    assert _fail(monkeypatch, 400, json=body) == "API_ERROR"
+    assert "[GMS 에러]" in caplog.text and "err_code=None" in caplog.text and KEY not in caplog.text
+
+
+def test_diag_flat_openai_401(lenv, monkeypatch, caplog):
+    caplog.set_level(logging.WARNING)
+    body = {"error": {"message": "bad", "type": "invalid_request_error", "code": "invalid_api_key"}}
+    assert _fail(monkeypatch, 401, json=body) == "API_ERROR"
+    assert "err_code=invalid_api_key" in caplog.text and "msg=None" in caplog.text and KEY not in caplog.text
+
+
+def test_diag_non_json_long_body(lenv, monkeypatch, caplog):
+    caplog.set_level(logging.WARNING)
+    text = "<html>" + "x" * 190 + KEY + "y" * 500
+    assert _fail(monkeypatch, 502, text=text) == "API_ERROR"
+    assert "raw=<html>" in caplog.text and KEY not in caplog.text
+    assert len(llm._err_diag(httpx.Response(502, text=text))) <= len("raw=") + llm.DIAG_MAX
+    assert len(llm._clip(text)) <= 200
+
+
+def test_diag_non_dict_json(lenv, monkeypatch, caplog):
+    caplog.set_level(logging.WARNING)
+    assert _fail(monkeypatch, 500, json=[1, 2]) == "API_ERROR"
+    assert "raw=" in caplog.text and KEY not in caplog.text
+
+
+def test_diag_via_root_handler_with_mask_filter(lenv, monkeypatch):
+    import io
+    buf, root = io.StringIO(), logging.getLogger()
+    h, lvl = logging.StreamHandler(buf), root.level
+    h.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))  # basicConfig 기본 포맷
+    root.addHandler(h)
+    root.setLevel(logging.INFO)
+    try:
+        base.install_log_mask()  # 기존 모든 핸들러에 _MaskFilter 부착(무해)
+        assert _fail(monkeypatch, 429, json=GMS429) == "RATE_LIMIT"
+    finally:
+        root.removeHandler(h)
+        root.setLevel(lvl)
+    out = buf.getvalue()
+    for t in ("WARNING", "backend.agent.llm", "err_code=organization_spend_limit_exceeded"):
+        assert t in out
+    assert KEY not in out

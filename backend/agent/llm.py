@@ -13,6 +13,34 @@ logger = logging.getLogger(__name__)
 LLM_TIMEOUT_S = 30.0  # 임의 초기값(실측 전, 미확인)
 
 
+DIAG_MAX = 200  # 필드당 최대 길이(임의 상수)
+
+
+def _clip(x) -> str:
+    # mask 먼저, 자르기는 나중: 키가 잘린 채 남으면 mask가 못 잡는다.
+    return mask(str(x)).replace("\n", " ")[:DIAG_MAX]
+
+
+def _err_diag(resp: httpx.Response) -> str:
+    """오류 응답 본문에서 진단 필드 추출. 절대 raise하지 않는다."""
+    try:
+        try:
+            d = resp.json()
+            if not isinstance(d, dict):
+                raise ValueError
+        except Exception:
+            return "raw=" + _clip(resp.text)
+        e = d.get("error")
+        if isinstance(e, dict) and isinstance(e.get("error"), dict):
+            e = e["error"]  # GMS 래핑: error.error
+        if not isinstance(e, dict):
+            e = {}
+        return "msg=%s err_code=%s err_type=%s err_msg=%s" % tuple(
+            _clip(v) for v in (d.get("message"), e.get("code"), e.get("type"), e.get("message")))
+    except Exception:
+        return ""
+
+
 class LlmError(Exception):
     def __init__(self, code: Literal["MISSING_API_KEY", "TIMEOUT", "RATE_LIMIT", "API_ERROR"]):
         super().__init__(MSG[code])
@@ -37,7 +65,8 @@ async def complete(messages: list[dict], *, json_mode: bool, timeout_s: float = 
         logger.warning("llm code=%s type=%s", code, mask(type(e).__name__))
     except httpx.HTTPStatusError as e:
         code = "RATE_LIMIT" if e.response.status_code == 429 else "API_ERROR"
-        logger.warning("llm code=%s type=%s status=%s", code, mask(type(e).__name__), e.response.status_code)
+        logger.warning("llm code=%s type=%s status=%s %s", code, mask(type(e).__name__),
+                       e.response.status_code, _err_diag(e.response))
     except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as e:
         logger.warning("llm code=%s type=%s", code, mask(type(e).__name__))
     raise LlmError(code) from None
