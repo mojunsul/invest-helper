@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>저장된 리포트</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>저장된 리포트</h1>
+    <nav><a href="index.html">채팅으로 돌아가기</a></nav>
+  </header>
+  <main>
+    <div id="msg" role="alert" aria-live="polite"></div>
+    <section id="list-view">
+      <p id="empty" class="empty" hidden></p>
+      <ul id="list"></ul>
+    </section>
+    <section id="detail-view" hidden>
+      <button type="button" id="back">← 목록</button>
+      <div id="detail"></div>
+    </section>
+  </main>
+  <footer id="disclaimer">투자 권유가 아니며 전문가 조언을 대신하지 않습니다.</footer>
+  <script src="common.js"></script>
+  <script src="reports.js"></script>
+</body>
+</html>

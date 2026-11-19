@@ -2,7 +2,11 @@
 (function (root) {
   "use strict";
 
-  var REASON_TEXT = {};
+  var REASON_TEXT = {
+    THRESHOLD_NOT_MET: "기준 미충족", NO_FINANCIALS: "재무정보 없음", FETCH_FAILED: "조회 실패(일시 오류 가능)",
+    NO_MARKET_CAP: "시가총액 확인 불가", NEGATIVE_EARNINGS: "순이익 적자(PER 산출 불가)",
+    NEGATIVE_EQUITY: "자본잠식", NONPOSITIVE_REVENUE: "매출 0 이하", NONPOSITIVE_ASSETS: "자산 0 이하",
+    INDUSTRY_AVG_UNAVAILABLE: "산업 평균 산출 불가" };
   var STATUS_TEXT = { asked: "추가 정보 필요", limit: "조건 완화 제안", error: "처리 실패" };
 
   function el(tag, opts, children) {
