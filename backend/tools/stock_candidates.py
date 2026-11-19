@@ -82,6 +82,7 @@ async def _resolve_prefixes(text: str) -> list[str]:
 
 
 @register(name="find_stock_candidates",
+          kind="external",
           description="사용자가 산업·시장으로 종목을 찾아야 할 때, 비교 대상 후보 목록을 얻는다",
           input_model=CandidateInput, requires_keys=("DATA_GO_KR_KEY",), timeout_s=30)
 async def find_stock_candidates(inp: CandidateInput):

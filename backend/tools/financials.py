@@ -113,6 +113,7 @@ async def _mkt_cap(stock_code: str, start: date) -> int | None:
 
 
 @register(name="get_financials",
+          kind="external",
           description="후보 종목의 PER·PBR·ROE·부채비율이 필요할 때 종목코드 하나로 조회한다",
           input_model=FinInput, requires_keys=("DATA_GO_KR_KEY",), timeout_s=40)
 async def get_financials(inp: FinInput):

@@ -15,7 +15,7 @@ def load_all() -> None:
 
 
 def describe() -> list[dict]:
-    return [{"name": t.name, "description": t.description,
+    return [{"name": t.name, "kind": t.kind, "description": t.description,
              "input_schema": t.input_model.model_json_schema()} for t in base._TOOLS.values()]
 
 

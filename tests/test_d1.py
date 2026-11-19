@@ -27,7 +27,7 @@ def env(monkeypatch):
 
 def mk(fn, **kw):
     base._TOOLS.clear()
-    return register(name="t", description="d", input_model=In, **kw)(fn)
+    return register(name="t", description="d", input_model=In, **{"kind": "external", **kw})(fn)
 
 
 def run(t, raw=None, **kw):
@@ -60,10 +60,10 @@ def test_validation_and_keys():
     t = mk(f, requires_keys=("DART_API_KEY",))
     assert code(run(t, {})) == "MISSING_API_KEY"  # 키 검사가 입력 검증보다 앞
     with pytest.raises(ValueError):
-        register(name="u", description="d", input_model=In, requires_keys=("NOPE",))(f)
+        register(name="u", description="d", input_model=In, kind="external", requires_keys=("NOPE",))(f)
     mk(f)
     with pytest.raises(ValueError):  # 중복
-        register(name="t", description="d", input_model=In)(f)
+        register(name="t", description="d", input_model=In, kind="external")(f)
 
 
 def test_timeout_priority_and_invalid_return():
@@ -135,7 +135,8 @@ def test_registry_and_cache():
         return ok([1])
     mk(f)
     d = registry.describe()
-    assert set(d[0]) == {"name", "description", "input_schema"}
+    assert set(d[0]) == {"name", "kind", "description", "input_schema"}
+    assert d[0]["kind"] == "external"
     assert registry.get("t").fn is f
     assert registry.cache_key_for("t", {"industry": "a"}) == registry.cache_key_for(
         "t", {"industry": "a", "market": None, "extra": 1})
@@ -179,3 +180,15 @@ def test_throttle_hosts_separate_and_unknown(monkeypatch):
     before = dict(base._next_start)
     asyncio.run(base.throttle("https://other.test/x"))
     assert sleeps == [] and base._next_start == before
+
+
+def test_tool_kind():
+    async def f(inp):
+        return ok([1])
+    with pytest.raises(ValueError):
+        register(name="k", description="d", input_model=In, kind="remote")(f)
+    with pytest.raises(TypeError):
+        register(name="k", description="d", input_model=In)(f)
+    from backend.tools import disclosures, financials, stock_candidates
+    for t in (stock_candidates.find_stock_candidates, financials.get_financials, disclosures.search_disclosures):
+        assert t.kind == "external"

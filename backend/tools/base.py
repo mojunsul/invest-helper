@@ -173,12 +173,16 @@ def fail(code: ErrorCode, message: str) -> ToolResult:
     return ToolResult(ok=False, error=ToolError(code=code, message=message))
 
 
+ToolKind = Literal["external", "local"]
+
+
 @dataclass(frozen=True)
 class Tool:
     name: str
     description: str
     input_model: type[BaseModel]
     fn: Callable[[BaseModel], Awaitable[ToolResult]]
+    kind: ToolKind
     requires_keys: tuple[str, ...] = ()
     timeout_s: float | None = None
 
@@ -222,13 +226,15 @@ class Tool:
 _TOOLS: dict[str, Tool] = {}
 
 
-def register(*, name, description, input_model, requires_keys=(), timeout_s=None):
+def register(*, name, description, input_model, kind, requires_keys=(), timeout_s=None):
     def deco(fn):
+        if kind not in get_args(ToolKind):
+            raise ValueError(f"invalid tool kind: {kind}")
         for k in requires_keys:
             if not hasattr(settings, k):
                 raise ValueError(f"unknown settings key: {k}")
         if name in _TOOLS:
             raise ValueError(f"duplicate tool: {name}")
-        _TOOLS[name] = tool = Tool(name, description, input_model, fn, tuple(requires_keys), timeout_s)
+        _TOOLS[name] = tool = Tool(name, description, input_model, fn, kind, tuple(requires_keys), timeout_s)
         return tool
     return deco

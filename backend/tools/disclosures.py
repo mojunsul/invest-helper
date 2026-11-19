@@ -82,6 +82,7 @@ def _convert(r, corp_code: str, stock_code: str) -> dict | None:
 
 
 @register(name="search_disclosures",
+          kind="external",
           description="종목의 최근 공시 제목·일자·링크를 보여줄 때 쓴다. 수치는 주지 않는다.",
           input_model=DisclosureInput, requires_keys=("DART_API_KEY",))
 async def search_disclosures(inp: DisclosureInput):
