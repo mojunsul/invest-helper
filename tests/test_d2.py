@@ -398,3 +398,19 @@ def test_progress_log_none_when_below_period_or_done(db, caplog):
     run()
     start, prog = _stage_b(caplog)
     assert "total=0" in start[0] and prog == []
+
+
+def test_stock_alias(db):
+    corps = [("005380", "A1", "현대자동차"), ("001500", "A2", "현대차증권"), ("000270", "A3", "기아")]
+
+    class F(Fake):
+        async def fetch_company(self, corp_code):
+            return {"jurir_no": "", "induty_code": "30110", "corp_cls": "Y"}
+
+    run(F(corps=corps))
+    r = resolve.resolve_stock("현대차")
+    assert (r.status, r.matches[0].stock_code, r.matched_by) == ("ok", "005380", "exact")
+    assert resolve.resolve_stock(" 기아 차 ").matches[0].stock_code == "000270"
+    assert resolve.resolve_stock("삼바").status == "none"  # 정식명 없음 -> 원 질의 폴백
+    r = resolve.resolve_stock("현대차증권")
+    assert (r.matches[0].stock_code, r.matched_by) == ("001500", "exact")

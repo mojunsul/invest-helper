@@ -13,6 +13,11 @@ from backend.identity.models import (CACHE_NOT_READY, INDUSTRY_NOT_READY, CacheS
 TERMS_PATH = Path(__file__).parent / "data" / "industry_terms.json"
 _SUFFIX = re.compile(r"(업종|산업|관련주|섹터|업)$")
 _DIGITS = re.compile(r"^\d{2,5}$")
+# 통칭 -> 정식명(D2d). 키·값 모두 norm_name 통과.
+_ALIASES = {norm_name(k): norm_name(v) for k, v in {
+    "현대차": "현대자동차", "기아차": "기아", "삼전": "삼성전자", "LG엔솔": "LG에너지솔루션",
+    "엘지엔솔": "LG에너지솔루션", "네이버": "NAVER", "한전": "한국전력공사", "삼바": "삼성바이오로직스",
+    "엔씨소프트": "NC", "KT&G": "케이티앤지", "포스코홀딩스": "POSCO홀딩스", "엘지전자": "LG전자"}.items()}
 
 
 def _require_cache() -> dict:
@@ -41,10 +46,22 @@ def resolve_stock(query: str) -> StockMatch:
     n = norm_name(q)
     if not n:
         return StockMatch("none", (), 0, None)
+    if n in _ALIASES:
+        m = _match(_ALIASES[n], False)
+        if m.status != "none":
+            return m
+    return _match(n, True)
+
+
+def _match(n: str, full: bool) -> StockMatch:
+    """full=False: 정확 단계만(별칭 정식명), True: 정확→접두→포함."""
+    cols = "stock_code, corp_code, name"
     esc = store.like_escape(n)
-    stages = [("exact", "name_norm=?", n), ("prefix", "name_norm LIKE ? ESCAPE '\\'", esc + "%")]
-    if len(n) >= 2:
-        stages.append(("contains", "name_norm LIKE ? ESCAPE '\\'", "%" + esc + "%"))
+    stages = [("exact", "name_norm=?", n)]
+    if full:
+        stages.append(("prefix", "name_norm LIKE ? ESCAPE '\\'", esc + "%"))
+        if len(n) >= 2:
+            stages.append(("contains", "name_norm LIKE ? ESCAPE '\\'", "%" + esc + "%"))
     for by, cond, p in stages:
         rows = store.read(f"SELECT {cols} FROM company WHERE listed=1 AND {cond} "
                           "ORDER BY length(name), stock_code", (p,))
