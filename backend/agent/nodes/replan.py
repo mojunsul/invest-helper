@@ -36,8 +36,10 @@ async def next_step(state, trigger: str) -> int | None:
                 ok = False
             if ok:
                 return 2
-        if step == 3 and trigger == "no_pass" and (scope.get("candidate_limit") or DEFAULT_LIMIT) < MAX_LIMIT:
-            return 3
+        if step == 3 and trigger == "no_pass":
+            lim = scope.get("candidate_limit") or DEFAULT_LIMIT
+            if lim < MAX_LIMIT and len(state.get("candidates") or []) >= lim:  # D9a: 상한에 잘렸을 때만
+                return 3
     return None
 
 

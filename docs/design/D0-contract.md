@@ -226,7 +226,7 @@ D0 계약이 아니라 **해당 단위 설계 시 확정해야 하는 입력 요
 9. **report_save 종료** (D9, draft 스키마 D12): `target_stock` 없음 → asked. 종목명→코드 변환 실패 → error(문구만 lookup과 다름). 세션 `report_draft` 없음/종목 불일치 → error("먼저 해당 종목을 조회하세요"). 일치 → answered(실제 저장은 `POST /api/reports`, chat은 안내만). 재계획 없음. `report_draft` 단위(종목 하나 vs 모음)는 D12.
 10. **PER 분포 역산 미지원** (D10): `last_result_summary`에 지표 값이 없어 DESIGN §7 역산 미지원. 추정 임계값 없이 되묻기만. 지원하려면 summary 확장 필요(수정 제안 #9).
 11. **공시 호출 시점** (D8/D9): `want_disclosures`가 True이면 search_disclosures를 PASS 종목에만 호출한다는 것까지 확정. 호출 노드·시점(judge 이후 execute 재진입 또는 respond 전), `NO_RESULT` 외 실패 표기는 D8/D9에서 확정(수정 제안 #10).
-12. **재계획 단계 효과 판정** (D9): ① `search_scope.market is not None`이면 유효 ② D2가 비어있지 않은 유사 업종을 주면 유효 ③ `candidate_limit`가 D3 최대 상한 미만이면 유효(trigger=`no_candidates`일 때는 건너뛸 수 있음). 규칙 1~6 평가·`status` 설정 주체는 D9. `search_scope` 초기화 주체는 plan 노드(D7).
+12. **재계획 단계 효과 판정** (D9): ① `search_scope.market is not None`이면 유효 ② D2가 비어있지 않은 유사 업종을 주면 유효 ③ trigger=`no_pass`이고 현재 상한(`candidate_limit` 또는 D3 기본 상한) < D3 최대 상한이며 현재 `candidates` 수 ≥ 현재 상한(상한에 잘렸을 수 있음)일 때만 유효(trigger=`no_candidates`면 건너뜀). 규칙 1~6 평가·`status` 설정 주체는 D9. `search_scope` 초기화 주체는 plan 노드(D7).
 13. **filing_qa 경로·종료** (D17): analyze는 `target_stock` 원문만 추출(없어도 되묻지 않음, conditions 불변) → plan이 `search_filing_text` step 1개(종목 변환 실패면 `[]`) → execute가 호출해 `filing_hits` 저장·실패는 `errors` → execute 직후 respond(judge·규칙 1~6 미적용). status: `MISSING_API_KEY`·종목 변환 실패·`NO_INDEX`·그 외 실패 → error, `NO_RESULT` → answered(근거 없음 안내), 근거 있음 → answered.
 
 ## DESIGN.md 수정 제안 (반영 완료)

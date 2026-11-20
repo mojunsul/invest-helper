@@ -38,6 +38,10 @@ COND = {"industry": "반도체", "market": "KOSPI", "base_date": None, "want_dis
         "pending_metrics": [], "constraints": [cons()]}
 
 
+def CANDS(n):
+    return [{"code": f"{i:06d}", "name": "A", "mkt_cap": 1} for i in range(n)]
+
+
 def S(**kw):
     b = {"session_id": "s", "user_msg": "x", "intent": "screen", "conditions": COND, "errors": [],
          "candidates": [{"code": "000001", "name": "A", "mkt_cap": 1}], "verdicts": {}, "tool_cache": {},
@@ -109,11 +113,14 @@ def test_next_step_skips(ev, monkeypatch):
     assert run(rp.next_step(S(search_scope=sc), "no_pass")) == 2  # 시장 None -> 1 건너뜀
     assert run(rp.next_step(S(search_scope=sc), "no_candidates")) == 2
     assert run(rp.next_step(S(search_scope=sc, expansion_step=2), "no_candidates")) is None  # 3은 no_pass만
-    assert run(rp.next_step(S(search_scope=sc, expansion_step=2), "no_pass")) == 3
+    assert run(rp.next_step(S(search_scope=sc, expansion_step=2), "no_pass")) is None  # 후보 1 < 상한 20
+    assert run(rp.next_step(S(search_scope=sc, expansion_step=2, candidates=CANDS(19)), "no_pass")) is None
+    assert run(rp.next_step(S(search_scope=sc, expansion_step=2, candidates=CANDS(20)), "no_pass")) == 3
+    assert run(rp.next_step(S(search_scope=sc, expansion_step=2, candidates=CANDS(20)), "no_candidates")) is None
     monkeypatch.setattr(rp, "similar_industries", lambda t: [])
-    assert run(rp.next_step(S(search_scope=sc), "no_pass")) == 3  # 유사 업종 없음 -> 점프
+    assert run(rp.next_step(S(search_scope=sc, candidates=CANDS(20)), "no_pass")) == 3  # 유사 업종 없음 -> 점프
     sc2 = {**sc, "candidate_limit": rp.MAX_LIMIT}
-    assert run(rp.next_step(S(search_scope=sc2), "no_pass")) is None  # 즉시 limit
+    assert run(rp.next_step(S(search_scope=sc2, candidates=CANDS(100)), "no_pass")) is None  # 즉시 limit
 
     def boom(t):
         raise RuntimeError
@@ -126,7 +133,7 @@ def test_next_step_skips(ev, monkeypatch):
 @pytest.mark.parametrize("mx", [1, 2, 3])
 def test_replan_max(ev, monkeypatch, mx):
     monkeypatch.setattr(rp, "settings", SimpleNamespace(REPLAN_MAX=mx))
-    s, n = S(verdicts={"1": V("FAIL")}), 0
+    s, n = S(verdicts={"1": V("FAIL")}, candidates=CANDS(20)), 0
     while True:
         o = run(rp.decide_outcome(s))
         if "status" in o:
@@ -307,6 +314,32 @@ def test_report_save(ev):
     assert run(rs.respond(S(intent="report_save", target_stock="x", errors=[E("resolve_stock", "NO_RESULT")])))["status"] == "error"
 
 
+def test_cond_line_market_display():
+    ex = {"replan_log": [{"change": "market_expand"}]}
+    assert "시장 KOSPI → 전체(확대)" in rs._cond_line(S(**ex))
+    assert "시장 KOSPI ·" in rs._cond_line(S())
+    c = {**COND, "market": None}
+    assert "시장 전체(KOSPI+KOSDAQ) ·" in rs._cond_line(S(conditions=c, **ex))
+
+
+def test_limit_reason_facts(ev, monkeypatch):
+    seen = []
+
+    async def cap(messages, *, json_mode, timeout_s=0):
+        seen.append(messages)
+        return "요약"
+
+    monkeypatch.setattr(llm, "complete", cap)
+    base = dict(verdicts={"000001": V("FAIL", [], ["ROE"])}, metrics={"000001": row(roe=1.0)}, status="limit")
+    run(rs.respond(S(replan_count=1, **base)))
+    f = json.loads(seen[-1][1]["content"])
+    assert f["limit_reason"] == "더 넓힐 검색 범위 없음" and f["replan_max"] == rs.settings.REPLAN_MAX
+    run(rs.respond(S(replan_count=rs.settings.REPLAN_MAX, **base)))
+    assert json.loads(seen[-1][1]["content"])["limit_reason"] == "재계획 한도 도달"
+    run(rs.respond(S(verdicts={"000001": V("PASS")}, metrics={"000001": row()}, status="answered")))
+    assert "limit_reason" not in json.loads(seen[-1][1]["content"])
+
+
 def test_summary_llm(ev, monkeypatch):
     seen = []
 
@@ -336,7 +369,9 @@ def test_summary_llm(ev, monkeypatch):
     s2 = S(verdicts={"000001": V("FAIL", [], ["ROE"])}, metrics={"000001": row(roe=1.0)}, replan_count=2,
            status="limit")
     monkeypatch.setattr(llm, "complete", lambda *a, **k: (_ for _ in ()).throw(llm.LlmError("TIMEOUT")))
-    assert "조건을 충족한 종목이 없습니다(재계획 2회)." in run(rs.respond(s2))["answer"]
+    assert "조건을 충족한 종목이 없습니다(재계획 2회, 더 넓힐 검색 범위 없음)." in run(rs.respond(s2))["answer"]
+    s3 = {**s2, "replan_count": 3}
+    assert "(재계획 3회, 재계획 한도 도달)." in run(rs.respond(s3))["answer"]
     assert [e.payload["reason"] for e in ev if e.type == "llm_decision"][-1] == "TIMEOUT"
 
 
@@ -440,20 +475,21 @@ def test_e2e_2_limit_with_replans(g, ev):
     g["cands"] = lambda raw: ok([cand("000001"), cand("000002")], actual="2026-01-02")
     g["fin"] = {"000001": fin("000001", 100), "000002": fin("000002", 120)}
     r = run(graph.run_agent(init()))
-    assert r["status"] == "limit" and r["replan_count"] == 3
-    assert [x["change"] for x in r["replan_log"]] == ["market_expand", "similar_industry", "limit_up"]
-    assert [e.payload["count"] for e in ev if e.type == "replan"] == [1, 2, 3]
+    assert r["status"] == "limit" and r["replan_count"] == 2
+    assert [x["change"] for x in r["replan_log"]] == ["market_expand", "similar_industry"]
+    assert [e.payload["count"] for e in ev if e.type == "replan"] == [1, 2]
+    assert "시장 KOSPI → 전체(확대)" in r["answer"] and "더 넓힐 검색 범위 없음" in r["answer"]
     assert "조건을 완화할까요?" in r["clarify_question"] and "재계획 이력" in r["answer"]
     assert "후보 중 최고 12.00%" in r["answer"]
     assert len(final_of(ev)) == 1
     # 기존 재무는 캐시 적중: get_financials 실호출은 종목당 1회
     assert len([c for c in g["calls"] if c[0] == "get_financials"]) == 2
-    assert len([c for c in g["calls"] if c[0] == "find_stock_candidates"]) == 4
-    # 시장 미지정이면 재계획 2회
+    assert len([c for c in g["calls"] if c[0] == "find_stock_candidates"]) == 3
+    # 시장 미지정이면 재계획 1회
     g["analysis"] = [A(industry="은행", constraints=[{"metric": "ROE", "op": ">=", "value": 25}])]
     ev.clear()
     r = run(graph.run_agent(init(tool_cache={})))
-    assert r["status"] == "limit" and [x["change"] for x in r["replan_log"]] == ["similar_industry", "limit_up"]
+    assert r["status"] == "limit" and [x["change"] for x in r["replan_log"]] == ["similar_industry"]
 
 
 def test_e2e_3_no_financials_one(g, ev):

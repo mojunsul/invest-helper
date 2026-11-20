@@ -278,13 +278,12 @@ def test_req2_replan_cache_limit(c, w):
     # DESIGN §10-2는 "3회"이나 D0 승인 5(효과 있는 단계만 센다)에 따라 시장 미지정이면 재계획 2회
     w.summary = None  # 템플릿 경로
     b = assert_common(c, w, ask(c, w, A(industry="은행", constraints=C_BANK)))
-    assert b["status"] == "limit" and [r["change"] for r in b["replans"]] == ["similar_industry", "limit_up"]
-    assert sorted({s["round"] for s in b["steps"]}) == [0, 1, 2]
-    assert [s["stage"] for s in b["steps"] if s["round"] == 1] == ["plan", "execute", "judge"]
-    assert [s["stage"] for s in b["steps"] if s["round"] == 2] == ["plan", "execute", "judge", "respond"]
+    assert b["status"] == "limit" and [r["change"] for r in b["replans"]] == ["similar_industry"]
+    assert sorted({s["round"] for s in b["steps"]}) == [0, 1]
+    assert [s["stage"] for s in b["steps"] if s["round"] == 1] == ["plan", "execute", "judge", "respond"]
     assert w.fin.count(2025) == 4  # 종목당 HTTP 1회, 나머지는 캐시
     fc = calls(b, "get_financials")
-    assert sum(t["cache_hit"] for t in fc) == 7 and sum(not t["cache_hit"] for t in fc) == 4
+    assert sum(t["cache_hit"] for t in fc) == 3 and sum(not t["cache_hit"] for t in fc) == 4
     assert [t["cache_hit"] for t in fc if t["round"] == 1].count(False) == 1  # 6419 종목 신규 1회
     assert b["industry_avg"]["PER"]["n"] == 4
     a = b["answer"]
@@ -297,8 +296,8 @@ def test_req2b_market_specified(c, w):
     w.summary = None
     b = assert_common(c, w, ask(c, w, A(industry="은행", market="KOSPI", constraints=C_BANK)))
     assert b["status"] == "limit"
-    assert [r["change"] for r in b["replans"]] == ["market_expand", "similar_industry", "limit_up"]
-    assert "시장 확대" in b["answer"] and w.fin.count(2025) == 4
+    assert [r["change"] for r in b["replans"]] == ["market_expand", "similar_industry"]
+    assert "시장 확대" in b["answer"] and "KOSPI → 전체(확대)" in b["answer"] and w.fin.count(2025) == 4
 
 
 # ---------------- 요청 3 ----------------
