@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -49,7 +49,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+# /docs: CDN·인라인 스크립트 없이 로컬 swagger-ui-dist(frontend/vendor/swagger)만 사용 -> CSP 완화 불필요. /redoc 미제공
+_DOCS_HTML = ("<!doctype html><html><head><meta charset=\"utf-8\"><title>API docs</title>"
+              "<link rel=\"stylesheet\" href=\"/vendor/swagger/swagger-ui.css\"></head>"
+              "<body><div id=\"swagger-ui\"></div>"
+              "<script src=\"/vendor/swagger/swagger-ui-bundle.js\"></script>"
+              "<script src=\"/vendor/swagger/docs-init.js\"></script></body></html>")
+
+app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
 
 
 def _err(status: int, code: str, msg: str) -> JSONResponse:
@@ -79,6 +86,11 @@ async def _security_headers(request: Request, call_next):
     resp = await call_next(request)
     resp.headers.update(_HEADERS)
     return resp
+
+
+@app.get("/docs", include_in_schema=False)
+async def _docs() -> HTMLResponse:
+    return HTMLResponse(_DOCS_HTML)
 
 
 app.include_router(reports.router)
