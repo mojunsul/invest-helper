@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from backend.agent import memory
 from backend.db import sqlite
+from backend.schemas import Report, ReportSummary, SaveResult, err_responses
 from backend.tools.base import mask
 
 logger = logging.getLogger(__name__)
@@ -99,12 +100,12 @@ class PatchBody(_Edit):
         return self
 
 
-@router.get("")
+@router.get("", responses={200: {"model": list[ReportSummary]}})
 def list_all():
     return sqlite.list_reports()
 
 
-@router.get("/{report_id}")
+@router.get("/{report_id}", responses={200: {"model": Report}, **err_responses(404, 422)})
 def get_one(report_id: int = _Id):
     r = sqlite.get_report(report_id)
     if r is None:
@@ -112,7 +113,7 @@ def get_one(report_id: int = _Id):
     return r
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, responses={201: {"model": SaveResult}, **err_responses(404, 422)})
 def create(body: CreateBody):
     d = memory.get_report_draft(body.session_id, body.stock_code)
     if not isinstance(d, dict) or d.get("stock_code") != body.stock_code or not isinstance(d.get("metrics"), dict):
@@ -121,7 +122,7 @@ def create(body: CreateBody):
     return {"id": rid, "duplicate_of": dup}
 
 
-@router.patch("/{report_id}")
+@router.patch("/{report_id}", responses={200: {"model": Report}, **err_responses(404, 422)})
 def patch(body: PatchBody, report_id: int = _Id):
     targets = {k: getattr(body, k) for k in ("target_per", "target_roe") if k in body.model_fields_set}
     r = sqlite.update_report(report_id, body.name, body.memo, body.review_date, targets)
@@ -130,7 +131,8 @@ def patch(body: PatchBody, report_id: int = _Id):
     return r
 
 
-@router.delete("/{report_id}", status_code=204)
+@router.delete("/{report_id}", status_code=204,
+               responses={204: {"description": "삭제됨"}, **err_responses(404, 422)})
 def delete(report_id: int = _Id):
     if not sqlite.delete_report(report_id):
         raise ApiError(404, "REPORT_NOT_FOUND")

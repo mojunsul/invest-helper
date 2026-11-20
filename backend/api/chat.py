@@ -9,7 +9,7 @@ from backend.agent import memory
 from backend.agent.nodes.respond import DISCLAIMER
 from backend.events import stream
 from backend.events.bus import Event, Final, publish
-from backend.schemas import ChatRequest
+from backend.schemas import ChatRequest, ChatResponse, err_responses
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chat")
@@ -78,7 +78,7 @@ def build_response(st: dict, evs: list[Event], failed: bool) -> dict:
             "evidence": st.get("filing_hits") or []}
 
 
-@router.post("")
+@router.post("", responses={200: {"model": ChatResponse}, **err_responses(409, 422)})
 async def chat(body: ChatRequest):
     sid = body.session_id  # 스키마에서 소문자 정규화됨
     lock = _locks.get(sid) or _locks.setdefault(sid, asyncio.Lock())

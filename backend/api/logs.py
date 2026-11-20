@@ -2,7 +2,7 @@ from fastapi import APIRouter, Response
 from fastapi.responses import JSONResponse
 
 from backend.events import logger_agent
-from backend.schemas import SessionId
+from backend.schemas import LogEvent, LogSession, SessionId, err_responses
 
 router = APIRouter(prefix="/api/logs")
 
@@ -17,12 +17,12 @@ def split_runs(events) -> list[dict]:
     return out
 
 
-@router.get("")
+@router.get("", responses={200: {"model": list[LogSession]}})
 def list_logs():
     return logger_agent.list_sessions()
 
 
-@router.get("/{session_id}")
+@router.get("/{session_id}", responses={200: {"model": list[LogEvent]}, **err_responses(404, 422)})
 def get_log(session_id: SessionId):
     evs = logger_agent.get_session(session_id.lower())
     if not evs:
@@ -30,7 +30,8 @@ def get_log(session_id: SessionId):
     return split_runs(evs)
 
 
-@router.delete("/{session_id}", status_code=204)
+@router.delete("/{session_id}", status_code=204,
+               responses={204: {"description": "삭제됨(멱등)"}, **err_responses(422)})
 def delete_log(session_id: SessionId):
     logger_agent.delete_session(session_id.lower())
     return Response(status_code=204)
