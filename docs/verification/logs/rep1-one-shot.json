@@ -1,0 +1,1938 @@
+{
+ "request": "반도체 중 ROE 10% 넘고 PER 산업 평균 이하인 종목 알려 줘",
+ "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+ "elapsed_s": 12.39,
+ "response": {
+  "answer": "반도체 산업에서 후보 20개를 대상으로 ROE 10% 이상, PER 산업 평균 이하 조건을 적용한 결과, 3개가 조건을 충족하고 17개는 미충족으로 판정되었습니다. 판정 불가로 분류된 종목은 없으며, 재계획은 수행되지 않았습니다.\n\n조건: 산업 반도체 · 시장 전체(KOSPI+KOSDAQ) · ROE ≥ 10% · PER ≤ 산업 평균\n시세 기준일: 2026-11-18\nPER 산업 평균 22.53배 (후보 14개 중 PER 산출 가능 종목의 중앙값, 공식 산업 평균 아님)\n\n| 종목 | ROE | PER | 재무기준 |\n|---|---|---|---|\n| SK하이닉스(000660) | 35.59% | 18.83배 | FY2025 |\n| DB하이텍(000990) | 11.26% | 12.80배 | FY2025 |\n| 미코(059090) | 10.88% | 9.14배 | FY2025 |\n\n제외 종목:\n- 제주반도체(080220): PER 44.82배 (기준 ≤ 22.53배)\n- 파두(440110): ROE -385.05% (기준 ≥ 10.00%) · 판단불가: 순이익 적자(PER 산출 불가)\n- 하나마이크론(067310): PER 23.62배 (기준 ≤ 22.53배)\n- SFA반도체(036540): ROE -4.05% (기준 ≥ 10.00%) · 판단불가: 순이익 적자(PER 산출 불가)\n- HD현대에너지솔루션(322000): ROE 9.98% (기준 ≥ 10.00%)\n- 하나머티리얼즈(166090): ROE 8.28% (기준 ≥ 10.00%)\n- 서울반도체(046890): ROE -9.58% (기준 ≥ 10.00%) · 판단불가: 순이익 적자(PER 산출 불가)\n- 가온칩스(399720): ROE -26.27% (기준 ≥ 10.00%) · 판단불가: 순이익 적자(PER 산출 불가)\n- 네패스(033640): ROE 8.21% (기준 ≥ 10.00%)\n- 광전자(017900): ROE 1.75% (기준 ≥ 10.00%), PER 95.42배 (기준 ≤ 22.53배)\n외 7개\n\n투자 권유가 아니며 전문가 조언을 대신하지 않습니다.",
+  "status": "answered",
+  "verdicts": [
+   {
+    "stock_code": "000660",
+    "stock_name": "SK하이닉스",
+    "status": "PASS",
+    "reasons": [],
+    "failed": []
+   },
+   {
+    "stock_code": "000990",
+    "stock_name": "DB하이텍",
+    "status": "PASS",
+    "reasons": [],
+    "failed": []
+   },
+   {
+    "stock_code": "080220",
+    "stock_name": "제주반도체",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "PER"
+    ]
+   },
+   {
+    "stock_code": "440110",
+    "stock_name": "파두",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET",
+     "NEGATIVE_EARNINGS"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   },
+   {
+    "stock_code": "067310",
+    "stock_name": "하나마이크론",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "PER"
+    ]
+   },
+   {
+    "stock_code": "036540",
+    "stock_name": "SFA반도체",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET",
+     "NEGATIVE_EARNINGS"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   },
+   {
+    "stock_code": "322000",
+    "stock_name": "HD현대에너지솔루션",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   },
+   {
+    "stock_code": "166090",
+    "stock_name": "하나머티리얼즈",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   },
+   {
+    "stock_code": "059090",
+    "stock_name": "미코",
+    "status": "PASS",
+    "reasons": [],
+    "failed": []
+   },
+   {
+    "stock_code": "046890",
+    "stock_name": "서울반도체",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET",
+     "NEGATIVE_EARNINGS"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   },
+   {
+    "stock_code": "399720",
+    "stock_name": "가온칩스",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET",
+     "NEGATIVE_EARNINGS"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   },
+   {
+    "stock_code": "033640",
+    "stock_name": "네패스",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   },
+   {
+    "stock_code": "017900",
+    "stock_name": "광전자",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "ROE",
+     "PER"
+    ]
+   },
+   {
+    "stock_code": "108320",
+    "stock_name": "LX세미콘",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   },
+   {
+    "stock_code": "094170",
+    "stock_name": "동운아나텍",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "ROE",
+     "PER"
+    ]
+   },
+   {
+    "stock_code": "078350",
+    "stock_name": "한양디지텍",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "ROE",
+     "PER"
+    ]
+   },
+   {
+    "stock_code": "077360",
+    "stock_name": "덕산하이메탈",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET",
+     "NEGATIVE_EARNINGS"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   },
+   {
+    "stock_code": "241770",
+    "stock_name": "메카로",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "ROE",
+     "PER"
+    ]
+   },
+   {
+    "stock_code": "200470",
+    "stock_name": "에이팩트",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET"
+    ],
+    "failed": [
+     "ROE",
+     "PER"
+    ]
+   },
+   {
+    "stock_code": "092190",
+    "stock_name": "서울바이오시스",
+    "status": "FAIL",
+    "reasons": [
+     "THRESHOLD_NOT_MET",
+     "NEGATIVE_EARNINGS"
+    ],
+    "failed": [
+     "ROE"
+    ]
+   }
+  ],
+  "industry_avg": {
+   "PER": {
+    "value": 22.527339467780585,
+    "n": 14
+   }
+  },
+  "steps": [
+   {
+    "seq": 1,
+    "stage": "analyze",
+    "round": 0,
+    "started_at": "2026-11-20T00:48:22.329Z",
+    "ended_at": "2026-11-20T00:48:23.578Z",
+    "intent": "screen",
+    "reason": "반도체 산업에서 ROE와 PER 조건으로 종목을 찾는 요청이다."
+   },
+   {
+    "seq": 6,
+    "stage": "plan",
+    "round": 0,
+    "started_at": "2026-11-20T00:48:23.581Z",
+    "ended_at": "2026-11-20T00:48:23.583Z",
+    "intent": null,
+    "reason": null
+   },
+   {
+    "seq": 8,
+    "stage": "execute",
+    "round": 0,
+    "started_at": "2026-11-20T00:48:23.585Z",
+    "ended_at": "2026-11-20T00:48:33.056Z",
+    "intent": null,
+    "reason": null
+   },
+   {
+    "seq": 52,
+    "stage": "judge",
+    "round": 0,
+    "started_at": "2026-11-20T00:48:33.063Z",
+    "ended_at": "2026-11-20T00:48:33.068Z",
+    "intent": null,
+    "reason": null
+   },
+   {
+    "seq": 54,
+    "stage": "respond",
+    "round": 0,
+    "started_at": "2026-11-20T00:48:33.072Z",
+    "ended_at": "2026-11-20T00:48:34.177Z",
+    "intent": null,
+    "reason": null
+   }
+  ],
+  "tool_calls": [
+   {
+    "type": "call",
+    "seq": 9,
+    "round": 0,
+    "tool": "find_stock_candidates",
+    "input": {
+     "industry": "반도체"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 10,
+    "round": 0,
+    "tool": "find_stock_candidates",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1458,
+    "summary": "후보 20건, 기준일 2026-11-18"
+   },
+   {
+    "type": "call",
+    "seq": 11,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "000660"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "call",
+    "seq": 12,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "000990"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "call",
+    "seq": 13,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "080220"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "call",
+    "seq": 14,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "440110"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "call",
+    "seq": 15,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "067310"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 16,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1606,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 17,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "036540"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 18,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1719,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 19,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "322000"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 20,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1792,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 21,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "166090"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 22,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1877,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 23,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "059090"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 24,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1966,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 25,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "046890"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 26,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1969,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 27,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "399720"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 28,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1974,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 29,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "033640"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 30,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2013,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 31,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "017900"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 32,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2016,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 33,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "108320"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 34,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2010,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 35,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "094170"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 36,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1992,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 37,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "078350"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 38,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1992,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 39,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "077360"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 40,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2003,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 41,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "241770"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 42,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1973,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 43,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "200470"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 44,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1988,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "call",
+    "seq": 45,
+    "round": 0,
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "092190"
+    },
+    "cache_hit": false
+   },
+   {
+    "type": "result",
+    "seq": 46,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2025,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "result",
+    "seq": 47,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1988,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "result",
+    "seq": 48,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1997,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "result",
+    "seq": 49,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2007,
+    "summary": "FY2025, 추정=아니오"
+   },
+   {
+    "type": "result",
+    "seq": 50,
+    "round": 0,
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2022,
+    "summary": "FY2025, 추정=아니오"
+   }
+  ],
+  "replans": [],
+  "disclaimer": "투자 권유가 아니며 전문가 조언을 대신하지 않습니다.",
+  "missing_api_key": false,
+  "saveable": [
+   {
+    "stock_code": "000660",
+    "stock_name": "SK하이닉스"
+   },
+   {
+    "stock_code": "000990",
+    "stock_name": "DB하이텍"
+   },
+   {
+    "stock_code": "059090",
+    "stock_name": "미코"
+   }
+  ],
+  "intent": "screen",
+  "conditions": {
+   "industry": "반도체",
+   "market": null,
+   "base_date": null,
+   "constraints": [
+    {
+     "metric": "ROE",
+     "op": ">=",
+     "value": 10.0,
+     "ref": null
+    },
+    {
+     "metric": "PER",
+     "op": "<=",
+     "value": null,
+     "ref": "industry_avg"
+    }
+   ],
+   "want_disclosures": false,
+   "pending_metrics": []
+  },
+  "metrics": {
+   "000660": {
+    "values": {
+     "revenue": 97146675000000,
+     "op_profit": 47206319000000,
+     "net_income": 42947902000000,
+     "assets": 176107659000000,
+     "equity": 120666751000000,
+     "mkt_cap": 808578162392000,
+     "PER": 18.826953698273783,
+     "PBR": 6.700919314484567,
+     "PSR": 8.32327161369136,
+     "ROE": 35.59215910271753,
+     "ROA": 24.38729936214756,
+     "OPM": 48.59283037736495,
+     "DEBT_RATIO": 45.9454717563
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "000990": {
+    "values": {
+     "revenue": 1397233307039,
+     "op_profit": 277294561174,
+     "net_income": 252582440798,
+     "assets": 2992581747645,
+     "equity": 2243995457046,
+     "mkt_cap": 3232390888400,
+     "PER": 12.797369754554984,
+     "PBR": 1.440462313883258,
+     "PSR": 2.3134224414174924,
+     "ROE": 11.255924783845153,
+     "ROA": 8.440285415653848,
+     "OPM": 19.84597416745234,
+     "DEBT_RATIO": 33.3595279014
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "080220": {
+    "values": {
+     "revenue": 302230571186,
+     "op_profit": 35873972312,
+     "net_income": 39499088944,
+     "assets": 335988104339,
+     "equity": 227104505361,
+     "mkt_cap": 1770361616200,
+     "PER": 44.82031519030572,
+     "PBR": 7.795361053651819,
+     "PSR": 5.85765235215228,
+     "ROE": 17.3924726333426,
+     "ROA": 11.75609744330318,
+     "OPM": 11.86973646353012,
+     "DEBT_RATIO": 47.9442707686
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "440110": {
+    "values": {
+     "revenue": 92419333233,
+     "op_profit": -65469985712,
+     "net_income": -76218175613,
+     "assets": 122427167093,
+     "equity": 19794311089,
+     "mkt_cap": 1613774709400,
+     "PER": null,
+     "PBR": 81.52719749346565,
+     "PSR": 17.46144072833207,
+     "ROE": -385.05091321594716,
+     "ROA": -62.255933403328676,
+     "OPM": -70.84014071703209,
+     "DEBT_RATIO": 518.4967314222
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {
+     "PER": "NEGATIVE_EARNINGS"
+    }
+   },
+   "067310": {
+    "values": {
+     "revenue": 1534418874072,
+     "op_profit": 127689329155,
+     "net_income": 65578519945,
+     "assets": 2017838854218,
+     "equity": 652675603467,
+     "mkt_cap": 1549237247700,
+     "PER": 23.624156949551907,
+     "PBR": 2.3736711460800466,
+     "PSR": 1.0096573197048049,
+     "ROE": 10.047643821317694,
+     "ROA": 3.249938408506586,
+     "OPM": 8.321673521659797,
+     "DEBT_RATIO": 209.1641304653
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "036540": {
+    "values": {
+     "revenue": 367389147993,
+     "op_profit": -19626671175,
+     "net_income": -19130997781,
+     "assets": 549454597885,
+     "equity": 472827187628,
+     "mkt_cap": 1388044957320,
+     "PER": null,
+     "PBR": 2.935628478310037,
+     "PSR": 3.778132709969013,
+     "ROE": -4.046086663707554,
+     "ROA": -3.4818159415974326,
+     "OPM": -5.342202207718437,
+     "DEBT_RATIO": 16.2062191562
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {
+     "PER": "NEGATIVE_EARNINGS"
+    }
+   },
+   "322000": {
+    "values": {
+     "revenue": 492659873672,
+     "op_profit": 41222890455,
+     "net_income": 41676678809,
+     "assets": 530430417283,
+     "equity": 417784216586,
+     "mkt_cap": 840000000000,
+     "PER": 20.155156888811486,
+     "PBR": 2.0106073103101245,
+     "PSR": 1.7050302752264535,
+     "ROE": 9.97564703366934,
+     "ROA": 7.8571434538913865,
+     "OPM": 8.367413840252214,
+     "DEBT_RATIO": 26.9627707857
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "166090": {
+    "values": {
+     "revenue": 273481969679,
+     "op_profit": 50081056398,
+     "net_income": 38375641020,
+     "assets": 685606173112,
+     "equity": 463680286012,
+     "mkt_cap": 822751238400,
+     "PER": 21.439413558491747,
+     "PBR": 1.774393398253527,
+     "PSR": 3.008429547899285,
+     "ROE": 8.276314990671578,
+     "ROA": 5.597330147395127,
+     "OPM": 18.31237959006319,
+     "DEBT_RATIO": 47.8618336373
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "059090": {
+    "values": {
+     "revenue": 977036793661,
+     "op_profit": 101004245476,
+     "net_income": 74949266372,
+     "assets": 2264573968886,
+     "equity": 689099900666,
+     "mkt_cap": 685043949000,
+     "PER": 9.140102127216055,
+     "PBR": 0.9941141311120782,
+     "PSR": 0.7011444742353152,
+     "ROE": 10.876400693072684,
+     "ROA": 3.309640903841591,
+     "OPM": 10.337813901309964,
+     "DEBT_RATIO": 228.6278182158
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "046890": {
+    "values": {
+     "revenue": 1013523607401,
+     "op_profit": -31515946872,
+     "net_income": -60006311172,
+     "assets": 1103260274069,
+     "equity": 626361810865,
+     "mkt_cap": 460029606000,
+     "PER": null,
+     "PBR": 0.7344470847683119,
+     "PSR": 0.4538913574787504,
+     "ROE": -9.580135655002948,
+     "ROA": -5.438998628191981,
+     "OPM": -3.1095424558306055,
+     "DEBT_RATIO": 76.137857534
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {
+     "PER": "NEGATIVE_EARNINGS"
+    }
+   },
+   "399720": {
+    "values": {
+     "revenue": 68510181008,
+     "op_profit": -16721496228,
+     "net_income": -14369143365,
+     "assets": 159310899656,
+     "equity": 54688158517,
+     "mkt_cap": 437591343600,
+     "PER": null,
+     "PBR": 8.001573932389281,
+     "PSR": 6.387245474492354,
+     "ROE": -26.27468862483878,
+     "ROA": -9.019560743192894,
+     "OPM": -24.407315791571786,
+     "DEBT_RATIO": 191.307851601
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {
+     "PER": "NEGATIVE_EARNINGS"
+    }
+   },
+   "033640": {
+    "values": {
+     "revenue": 521439287008,
+     "op_profit": 23761125843,
+     "net_income": 20158821632,
+     "assets": 696198458357,
+     "equity": 245425030775,
+     "mkt_cap": 427748197100,
+     "PER": 21.218908769002397,
+     "PBR": 1.7428874135179377,
+     "PSR": 0.8203221501670959,
+     "ROE": 8.213840930708141,
+     "ROA": 2.8955567755168543,
+     "OPM": 4.55683459896942,
+     "DEBT_RATIO": 183.6705189192
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "017900": {
+    "values": {
+     "revenue": 132685277641,
+     "op_profit": 1204703470,
+     "net_income": 4226529140,
+     "assets": 258292978185,
+     "equity": 241121478304,
+     "mkt_cap": 403288590480,
+     "PER": 95.41838636891546,
+     "PBR": 1.6725535747236242,
+     "PSR": 3.0394373637379575,
+     "ROE": 1.75286298413918,
+     "ROA": 1.6363314131492908,
+     "OPM": 0.9079405729243802,
+     "DEBT_RATIO": 7.1215140193
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "108320": {
+    "values": {
+     "revenue": 1639070665791,
+     "op_profit": 108856055553,
+     "net_income": 82633081344,
+     "assets": 1399843476485,
+     "equity": 1125606564582,
+     "mkt_cap": 377331760000,
+     "PER": 4.566352287277958,
+     "PBR": 0.33522526597925817,
+     "PSR": 0.23021079436981032,
+     "ROE": 7.341204639712299,
+     "ROA": 5.90302292592678,
+     "OPM": 6.641327785612409,
+     "DEBT_RATIO": 24.3634783709
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "094170": {
+    "values": {
+     "revenue": 127630547202,
+     "op_profit": 2418553415,
+     "net_income": 1021018891,
+     "assets": 109927218116,
+     "equity": 69220827676,
+     "mkt_cap": 369520054600,
+     "PER": 361.91304378128297,
+     "PBR": 5.338278477824654,
+     "PSR": 2.895232079630303,
+     "ROE": 1.4750168775488421,
+     "ROA": 0.9288135445423319,
+     "OPM": 1.8949643858943674,
+     "DEBT_RATIO": 58.8065641609
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "078350": {
+    "values": {
+     "revenue": 651051158827,
+     "op_profit": 23871001484,
+     "net_income": 14976315394,
+     "assets": 297513744344,
+     "equity": 170006375075,
+     "mkt_cap": 353669662400,
+     "PER": 23.615265377069424,
+     "PBR": 2.080331765464531,
+     "PSR": 0.543228681194896,
+     "ROE": 8.809266939191573,
+     "ROA": 5.033823034637233,
+     "OPM": 3.666532370053442,
+     "DEBT_RATIO": 75.0015222739
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "077360": {
+    "values": {
+     "revenue": 236404536110,
+     "op_profit": 2813023041,
+     "net_income": -115704594175,
+     "assets": 658964267763,
+     "equity": 338764237393,
+     "mkt_cap": 318967754040,
+     "PER": null,
+     "PBR": 0.9415626528191223,
+     "PSR": 1.3492454894841062,
+     "ROE": -34.15490226046831,
+     "ROA": -17.558553602274195,
+     "OPM": 1.1899192322143468,
+     "DEBT_RATIO": 94.5200216039
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {
+     "PER": "NEGATIVE_EARNINGS"
+    }
+   },
+   "241770": {
+    "values": {
+     "revenue": 94613747133,
+     "op_profit": 15360214876,
+     "net_income": 12613877874,
+     "assets": 225650454777,
+     "equity": 205450522470,
+     "mkt_cap": 310365888000,
+     "PER": 24.60511280513766,
+     "PBR": 1.5106600083984687,
+     "PSR": 3.2803466452260253,
+     "ROE": 6.139618299506581,
+     "ROA": 5.590007734070697,
+     "OPM": 16.23465441486839,
+     "DEBT_RATIO": 9.8320179789
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "200470": {
+    "values": {
+     "revenue": 110999185614,
+     "op_profit": 5267413072,
+     "net_income": 5226139451,
+     "assets": 181859657148,
+     "equity": 70190938252,
+     "mkt_cap": 296892347400,
+     "PER": 56.809113148174966,
+     "PBR": 4.229781718176996,
+     "PSR": 2.6747254563870766,
+     "ROE": 7.445604206396383,
+     "ROA": 2.873721161118704,
+     "OPM": 4.745451998465507,
+     "DEBT_RATIO": 159.0927855888
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {}
+   },
+   "092190": {
+    "values": {
+     "revenue": 763809147116,
+     "op_profit": 225831786,
+     "net_income": -13622448242,
+     "assets": 717773205486,
+     "equity": 169883679260,
+     "mkt_cap": 277503717150,
+     "PER": null,
+     "PBR": 1.633492507101238,
+     "PSR": 0.36331551958732355,
+     "ROE": -8.018691554914703,
+     "ROA": -1.8978763957587859,
+     "OPM": 0.02956652022991587,
+     "DEBT_RATIO": 322.5086297946
+    },
+    "fiscal_period": "FY2025",
+    "actual_basis": "FY2025",
+    "estimated": false,
+    "reasons": {
+     "PER": "NEGATIVE_EARNINGS"
+    }
+   }
+  },
+  "disclosures": {},
+  "evidence": []
+ },
+ "run_log": [
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 1,
+   "ts": "2026-11-20T00:48:22.329Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "analyze"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 2,
+   "ts": "2026-11-20T00:48:23.567Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "intent",
+    "decision": "screen",
+    "reason": "반도체 산업에서 ROE와 PER 조건으로 종목을 찾는 요청이다."
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 3,
+   "ts": "2026-11-20T00:48:23.572Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "tools",
+    "decision": "find_stock_candidates,get_financials",
+    "reason": "llm=find_stock_candidates,get_financials; unknown=0; match=yes"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 4,
+   "ts": "2026-11-20T00:48:23.574Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "conditions",
+    "decision": "industry=반도체; ROE>=10; PER<=industry_avg; pending=[]; missing=[]",
+    "reason": "new_screen"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 5,
+   "ts": "2026-11-20T00:48:23.578Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "analyze",
+    "intent": "screen",
+    "reason": "반도체 산업에서 ROE와 PER 조건으로 종목을 찾는 요청이다."
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 6,
+   "ts": "2026-11-20T00:48:23.581Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "plan"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 7,
+   "ts": "2026-11-20T00:48:23.583Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "plan",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 8,
+   "ts": "2026-11-20T00:48:23.585Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "execute"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 9,
+   "ts": "2026-11-20T00:48:23.587Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "find_stock_candidates",
+    "input": {
+     "industry": "반도체"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 10,
+   "ts": "2026-11-20T00:48:25.047Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "find_stock_candidates",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1458,
+    "summary": "후보 20건, 기준일 2026-11-18"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 11,
+   "ts": "2026-11-20T00:48:25.049Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "000660"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 12,
+   "ts": "2026-11-20T00:48:25.050Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "000990"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 13,
+   "ts": "2026-11-20T00:48:25.051Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "080220"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 14,
+   "ts": "2026-11-20T00:48:25.052Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "440110"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 15,
+   "ts": "2026-11-20T00:48:25.053Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "067310"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 16,
+   "ts": "2026-11-20T00:48:26.656Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1606,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 17,
+   "ts": "2026-11-20T00:48:26.669Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "036540"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 18,
+   "ts": "2026-11-20T00:48:26.770Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1719,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 19,
+   "ts": "2026-11-20T00:48:26.773Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "322000"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 20,
+   "ts": "2026-11-20T00:48:26.844Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1792,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 21,
+   "ts": "2026-11-20T00:48:26.846Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "166090"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 22,
+   "ts": "2026-11-20T00:48:26.930Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1877,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 23,
+   "ts": "2026-11-20T00:48:26.932Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "059090"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 24,
+   "ts": "2026-11-20T00:48:27.020Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1966,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 25,
+   "ts": "2026-11-20T00:48:27.022Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "046890"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 26,
+   "ts": "2026-11-20T00:48:28.643Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1969,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 27,
+   "ts": "2026-11-20T00:48:28.644Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "399720"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 28,
+   "ts": "2026-11-20T00:48:28.748Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1974,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 29,
+   "ts": "2026-11-20T00:48:28.752Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "033640"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 30,
+   "ts": "2026-11-20T00:48:28.862Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2013,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 31,
+   "ts": "2026-11-20T00:48:28.863Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "017900"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 32,
+   "ts": "2026-11-20T00:48:28.950Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2016,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 33,
+   "ts": "2026-11-20T00:48:28.952Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "108320"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 34,
+   "ts": "2026-11-20T00:48:29.033Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2010,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 35,
+   "ts": "2026-11-20T00:48:29.035Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "094170"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 36,
+   "ts": "2026-11-20T00:48:30.638Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1992,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 37,
+   "ts": "2026-11-20T00:48:30.641Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "078350"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 38,
+   "ts": "2026-11-20T00:48:30.746Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1992,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 39,
+   "ts": "2026-11-20T00:48:30.750Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "077360"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 40,
+   "ts": "2026-11-20T00:48:30.868Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2003,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 41,
+   "ts": "2026-11-20T00:48:30.870Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "241770"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 42,
+   "ts": "2026-11-20T00:48:30.927Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1973,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 43,
+   "ts": "2026-11-20T00:48:30.930Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "200470"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 44,
+   "ts": "2026-11-20T00:48:31.026Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1988,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 45,
+   "ts": "2026-11-20T00:48:31.028Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "092190"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 46,
+   "ts": "2026-11-20T00:48:32.669Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2025,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 47,
+   "ts": "2026-11-20T00:48:32.742Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1988,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 48,
+   "ts": "2026-11-20T00:48:32.869Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1997,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 49,
+   "ts": "2026-11-20T00:48:32.939Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2007,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 50,
+   "ts": "2026-11-20T00:48:33.051Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 2022,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 51,
+   "ts": "2026-11-20T00:48:33.056Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "execute",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 52,
+   "ts": "2026-11-20T00:48:33.063Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "judge"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 53,
+   "ts": "2026-11-20T00:48:33.068Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "judge",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 54,
+   "ts": "2026-11-20T00:48:33.072Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "respond"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 55,
+   "ts": "2026-11-20T00:48:34.172Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "summary",
+    "decision": "llm",
+    "reason": "ok"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 56,
+   "ts": "2026-11-20T00:48:34.177Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "respond",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "48b3cd8c-0f7f-498f-8569-d737631ed771",
+   "seq": 57,
+   "ts": "2026-11-20T00:48:34.179Z",
+   "type": "final",
+   "payload": {
+    "status": "answered"
+   },
+   "run": 1
+  }
+ ]
+}

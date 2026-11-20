@@ -23,7 +23,7 @@ TOOL_TIMEOUT_S = 20
 HASH_DIM = 1024
 # 실측 후 조정(임의 초기값). 해시 임베딩은 코사인 분포가 달라 별도 값.
 MIN_SCORE = 0.3
-MIN_SCORE_LOCAL = 0.1
+MIN_SCORE_LOCAL = 0.12
 EXCERPT_MAX = 300
 _URL_RE = re.compile(r"(?:https?://|www\.)\S+", re.IGNORECASE)
 

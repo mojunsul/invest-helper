@@ -183,7 +183,8 @@ run_logs(id, session_id, seq, ts, type, payload_json)
 ## 10. 대표 요청 추적 (설계 시험용)
 
 1. "반도체 중 ROE 10% 넘고 PER 산업 평균 이하" → analyze(industry=반도체, ROE≥10, PER≤avg) → candidates → financials×N → judge(중앙값 계산) → 충족 K개 → respond(+공시 링크).
-2. "ROE 25% 넘고 부채비율 30% 이하 은행" → 충족 0 → replan①시장 확대(cache로 기존 재무 재사용) → … → 3회 후 되묻기.
+2. "KOSPI 2차전지 중 ROE 15% 넘는 종목" → 충족 0 → replan①시장 확대(cache로 기존 재무 재사용) → 충족(재계획 후 answered).
+   - 상한 도달 사례: "KOSPI 반도체 중 ROE 200% 넘고 부채비율 1% 이하인 종목" → 충족 0 → replan①시장 확대 → ②유사 업종 → ③후보 상한 확대 → 3회 후 되묻기("재계획 한도 도달"). (은행은 금융업 재무 미지원(D4a)이라 예시에서 제외)
 3. 한 종목 `NO_FINANCIALS` → 해당 종목 UNDECIDABLE, 나머지 진행.
 4. "안녕" → analyze → respond (plan 건너뜀).
 5. "ROE 높은 종목" → 임계값 없음 → 되묻기(Tool 0회).
