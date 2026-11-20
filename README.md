@@ -102,7 +102,7 @@ JS 단위 테스트는 node가 설치된 경우에만 실행되고 없으면 ski
 - 리포트 수정(F3016): 이름(`name`)·메모(`memo`)·재검토 예정일(`review_date`, 다시 볼 날짜), 내 기준값(`target_per` PER 상한·`target_roe` ROE 하한, 사용자 판단 기준)을 고칠 수 있고, 리포트 삭제도 할 수 있다. 재검토 예정일은 저장할 때 지정하거나 나중에 넣고 지울 수 있다. 수정·삭제 결과는 리포트 화면에 바로 반영된다. 핵심 값은 사용자 판단 기준값과 재검토일이며, 저장 지표와 비교해 충족 여부를 함께 보여 준다. 종목·기준일·지표 값·산업 평균·공시 목록은 수정할 수 없다(지표 불변은 의도된 변조 방지). 이 값들은 저장 시점에 조회·계산한 근거를 그대로 남긴 것이라, 손으로 고치면 출처 데이터와 맞지 않는 리포트가 된다. API도 `PATCH /api/reports/{id}`에 `name`·`memo`·`review_date`·`target_per`·`target_roe` 외 필드가 오면 422로 거부한다. 다른 기준일이나 종목이 필요하면 채팅에서 다시 분석한 뒤 새 리포트로 저장한다.
 - 공시 원문 검색(`search_filing_text`)의 `kind=local`은 데이터 출처가 로컬 색인이라는 뜻이다(질의 임베딩도 로컬 해시 `local-hash-v1`, 네트워크 호출 없음).
 - 세션 메모리는 프로세스 메모리라 서버를 재시작하면 사라진다. 리포트·실행 로그는 SQLite에 남는다.
-- 실데이터 검증: 대표 요청 5개 실행과 공시 RAG 비교(D17)는 실제 외부 API로 수행했다(§11). 브라우저 수동 확인은 아직 수행하지 않았다(미확인).
+- 실데이터 검증: 대표 요청 5개 실행과 공시 RAG 비교(D17)는 실제 외부 API로 수행했다(§11). 화면 확인은 실제 서버 렌더(리포트 화면, 로그 API 응답: DB 사본 사용)와 저장된 실행 로그 기반 목킹 렌더(채팅 화면), 일부 합성 응답 렌더(키 누락·종목별 조회 실패)로 수행했고 캡처는 [docs/verification/screenshots/](docs/verification/screenshots/)에 있다. 외부 API 실호출 브라우저 E2E는 실시하지 않았다. 또 `/docs`(Swagger UI) 화면은 응답 CSP(`script-src 'self'`)가 CDN 스크립트를 막아 브라우저에서 빈 화면이며, 스키마는 `/openapi.json`으로 확인했다.
 - 라이브러리와 다른 점(명세 §6.5): langchain/openai 대신 httpx로 GMS Anthropic Messages를 직접 호출하고, 에이전트 흐름은 LangGraph를 쓴다.
 
 ## 9. 전체 기능 (필수 F3001~F3019 / 심화 F3022)
@@ -168,7 +168,26 @@ async def my_tool(inp: MyInput):
 - 대표 요청 5개 실제 실행 기록: [docs/verification/representative-requests.md](docs/verification/representative-requests.md)
 - 공시 RAG 실데이터 비교: [docs/verification/D17-rag-comparison.md](docs/verification/D17-rag-comparison.md)
 - 실행 로그 샘플(JSON): [docs/verification/logs/](docs/verification/logs/)
+- 기획 검증(명세 8.7) 결과: [docs/verification/planning-verification.md](docs/verification/planning-verification.md)
+- 화면 캡처: [docs/verification/screenshots/](docs/verification/screenshots/) (파일명 `NN-영역-내용.png`, NN은 체크리스트 번호; 채팅 화면은 `/api/chat` 응답을 저장된 로그 응답으로 바꿔 렌더한 목킹이며 증빙 절차는 아래)
 - 셀프 체크리스트: [docs/셀프체크리스트_투자도우미.xlsx](docs/셀프체크리스트_투자도우미.xlsx)
+
+### 캡처 증빙 절차
+
+- 서버는 DB 사본으로만 띄운다(`invest_helper.db`를 임시 폴더에 복사한 뒤 그 폴더에서 `PYTHONPATH=<저장소> python -m uvicorn backend.main:app --port 8765`; DB 경로가 상대 경로라 실행 위치의 DB가 쓰인다). 외부 API는 호출하지 않는다(채팅 API 미호출).
+- 채팅 화면 목킹: 브라우저로 `index.html`을 연 뒤 `window.fetch`를 덮어써 `/api/chat`만 저장된 응답으로 돌려주고 질문을 제출한다. `rep*.json`의 `response` 값이 `/api/chat` 응답 본문이다.
+
+```js
+const MOCK = /* docs/verification/logs/rep2-replan.json 의 response 객체 */;
+const orig = window.fetch;
+window.fetch = (u, o) => String(u).includes('/api/chat')
+  ? Promise.resolve(new Response(JSON.stringify(MOCK), {status: 200, headers: {'content-type': 'application/json'}}))
+  : orig(u, o);   // '처리 중' 화면은 new Promise(() => {}) 를 반환
+document.getElementById('msg').value = 'KOSPI 2차전지 중 ROE 15% 넘는 종목';
+document.getElementById('form').requestSubmit();
+```
+
+- 키 누락 배너(`22-chat-keymissing-banner.png`)와 종목별 조회 실패(`22-chat-tool-fail.png`)는 위 응답을 변형한 **합성 응답 렌더(실행 로그 아님)**다. 리포트 화면 캡처(19·20번)는 DB 사본에 대한 실제 서버 렌더다.
 
 ## 12. 면책
 
