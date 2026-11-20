@@ -51,10 +51,10 @@ button {
 }
 button:hover { background: var(--surface-2); }
 button:disabled { opacity: .55; cursor: not-allowed; }
-#send, .save-panel button:nth-of-type(1), .edit-form button[type="submit"] {
+#send, #cf-go, .save-panel button:nth-of-type(1), .edit-form button[type="submit"] {
   background: var(--accent); color: var(--accent-fg); border-color: var(--accent);
 }
-#send:hover, .save-panel button:nth-of-type(1):hover, .edit-form button[type="submit"]:hover { background: var(--accent); opacity: .9; }
+#send:hover, #cf-go:hover, .save-panel button:nth-of-type(1):hover, .edit-form button[type="submit"]:hover { background: var(--accent); opacity: .9; }
 input, textarea {
   font: inherit; max-width: 100%; background: var(--surface); color: var(--fg);
   border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px;
@@ -205,7 +205,17 @@ table.metrics td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .memo { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius-sm); }
 .disclaimer { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
 
+.cf summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.cf-body { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.cf fieldset { border: 1px solid var(--line); border-radius: var(--radius-sm); width: 100%; min-width: 0; }
+.cf-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0; }
+.cf-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 12px; min-height: 32px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--line); cursor: pointer; }
+.cf-chip:has(input:checked) { border-color: var(--accent); background: var(--info-bg); }
+.cf-row input[type="number"] { width: 6rem; }
+#cf-go { border-radius: 999px; padding: 6px 20px; }
 @media (max-width: 600px) {
+  .cf-row { flex-direction: column; align-items: flex-start; }
   main, header, form.search, .layout { padding-left: 12px; padding-right: 12px; }
   #log > li.run { padding: 10px 12px; }
   header h1 { font-size: .95rem; }

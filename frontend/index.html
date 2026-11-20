@@ -14,6 +14,22 @@
       <button type="button" id="new-chat">새 분석</button>
     </nav>
   </header>
+  <form id="cf-form" class="search cf">
+    <details id="cf" open>
+      <summary>조건으로 찾기 (용어 몰라도 OK)</summary>
+      <div class="cf-body">
+        <label for="cf-industry">산업</label>
+        <select id="cf-industry"></select>
+        <p class="hint">목록에 없는 산업은 아래 채팅창에 직접 입력하세요.</p>
+        <fieldset>
+          <legend>조건 (여러 개 선택 가능)</legend>
+          <div id="cf-chips"></div>
+        </fieldset>
+        <button type="submit" id="cf-go">찾기</button>
+        <p id="cf-err" class="hint" role="alert" hidden></p>
+      </div>
+    </details>
+  </form>
   <form id="form" class="search">
     <label for="msg" class="sr-only">분석할 질문</label>
     <div class="composer">

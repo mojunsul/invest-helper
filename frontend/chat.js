@@ -223,7 +223,42 @@
     return { items: [], raw: null };
   }
 
-  var exported = { HISTORY_KEY: HISTORY_KEY, HISTORY_MAX: HISTORY_MAX, HISTORY_MAX_LEN: HISTORY_MAX_LEN,
+  // ---- D14e 조건 선택 폼 ----
+  var INDUSTRIES = ["반도체", "반도체장비", "전자부품", "통신장비", "전기전자", "2차전지", "은행", "저축은행", "증권", "보험",
+    "금융", "자동차", "자동차부품", "바이오", "제약", "제약바이오", "화학", "정유", "철강", "건설", "조선", "항공",
+    "소프트웨어", "게임", "인터넷", "통신", "유통", "음식료", "식품", "전력가스"];
+  var COND_DEFS = [
+    { id: "roe", label: "수익성 좋음", desc: "ROE: 내 돈(자기자본) 대비 얼마나 이익을 내는지. 높을수록 장사를 잘함",
+      unit: "%", def: 10, min: 0, max: 100, step: 1, fmt: function (v) { return "ROE " + v + "% 이상"; } },
+    { id: "opm", label: "본업 이익률 높음", desc: "영업이익률: 100원 팔아 본업으로 남기는 이익",
+      unit: "%", def: 10, min: 0, max: 100, step: 1, fmt: function (v) { return "영업이익률 " + v + "% 이상"; } },
+    { id: "per", label: "저평가", desc: "PER: 이익 대비 주가 수준. 같은 산업 평균보다 낮으면 상대적으로 싼 편",
+      fixed: "PER 산업 평균 이하" },
+    { id: "pbr", label: "자산 대비 저렴", desc: "PBR: 순자산 대비 주가. 1배 이하면 장부가보다 싸게 거래",
+      unit: "배", def: 1, min: 0.1, max: 20, step: 0.1, fmt: function (v) { return "PBR " + v + "배 이하"; } },
+    { id: "debt", label: "부채 적음", desc: "부채비율: 자기자본 대비 빚. 낮을수록 재무가 안정적",
+      unit: "%", def: 100, min: 0, max: 1000, step: 10, fmt: function (v) { return "부채비율 " + v + "% 이하"; } }
+  ];
+
+  // picks: [{id, value}] (체크된 칩, UI 순서). 반환 {ok:true,text} | {ok:false,msg,field?}
+  function buildQuery(industry, picks) {
+    if (INDUSTRIES.indexOf(industry) < 0) return { ok: false, msg: "산업을 선택하세요.", field: "cf-industry" };
+    picks = arr(picks);
+    if (!picks.length) return { ok: false, msg: "조건을 하나 이상 선택하세요." };
+    var parts = [];
+    for (var i = 0; i < picks.length; i++) {
+      var p = picks[i], d = COND_DEFS.filter(function (x) { return x.id === p.id; })[0];
+      if (!d) return { ok: false, msg: "알 수 없는 조건입니다." };
+      if (d.fixed) { parts.push(d.fixed); continue; }
+      var raw = String(p.value == null ? "" : p.value).trim(), v = raw === "" ? NaN : Number(raw);
+      if (!isFinite(v) || v < d.min || v > d.max)
+        return { ok: false, msg: d.label + " 기준값은 " + d.min + "~" + d.max + " 사이 숫자로 입력하세요.", field: p.id };
+      parts.push(d.fmt(String(v)));
+    }
+    return { ok: true, text: industry + " 중 " + parts.join(", ") + "인 종목 찾아줘" };
+  }
+
+  var exported = { COND_DEFS: COND_DEFS, INDUSTRIES: INDUSTRIES, buildQuery: buildQuery, HISTORY_KEY: HISTORY_KEY, HISTORY_MAX: HISTORY_MAX, HISTORY_MAX_LEN: HISTORY_MAX_LEN,
                    parseHistory: parseHistory, pushHistory: pushHistory, SESSION_KEY: SESSION_KEY, UUID_RE: UUID_RE, uuidV4: uuidV4, getSessionId: getSessionId,
                    timelineRows: timelineRows, buildSaveBody: buildSaveBody, INTENT_TEXT: INTENT_TEXT, METRICS: METRICS,
                    METRIC_LABEL: METRIC_LABEL, fmtMetric: fmtMetric, condChips: condChips, groupVerdicts: groupVerdicts,
@@ -235,7 +270,8 @@
     var el = C.el;
     var log = $("log"), status = $("status"), banner = $("banner"), form = $("form"), empty = $("empty"),
         msg = $("msg"), send = $("send"), newChat = $("new-chat"), disc = $("disclaimer"),
-        chipsEl = $("chips"), tl = $("timeline"), sideSum = $("side-sum"), sidePanel = $("side-panel"), side = $("side");
+        chipsEl = $("chips"), tl = $("timeline"), sideSum = $("side-sum"), sidePanel = $("side-panel"), side = $("side"),
+        cfForm = $("cf-form"), cf = $("cf"), cfIndustry = $("cf-industry"), cfChips = $("cf-chips"), cfGo = $("cf-go"), cfErr = $("cf-err");
     var store = { get: C.storageGet, set: C.storageSet };
     var sid = getSessionId(store), busy = false, seq = 0;
     function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
@@ -248,6 +284,9 @@
       busy = b;
       msg.disabled = send.disabled = newChat.disabled = b;
       Array.prototype.forEach.call(chipsEl.querySelectorAll("button"), function (x) { x.disabled = b; });
+      Array.prototype.forEach.call(cfForm.querySelectorAll("button, input, select"), function (x) {
+        x.disabled = b || (x.dataset.cfv === "1" && !$(x.dataset.cfFor).checked);
+      });
       form.setAttribute("aria-busy", b ? "true" : "false");
       status.textContent = b ? "분석 중입니다… (최대 수십 초 걸릴 수 있습니다)" : "";
     }
@@ -460,8 +499,10 @@
       return li;
     }
 
-    async function submit() {
-      var text = msg.value.trim();
+    // textArg 없음 = 채팅 입력, 있음 = 조건 폼(입력창 초안·포커스 건드리지 않음)
+    async function submit(textArg) {
+      var fromForm = typeof textArg === "string", back = fromForm ? cfGo : msg;
+      var text = (fromForm ? textArg : msg.value).trim();
       if (!text || busy) return;
       setBusy(true);
       var tmp = pendingCard(text);
@@ -482,7 +523,8 @@
         status.textContent = statusLine(res);
         var p = pushHistory(hist, { q: text, res: res, at: at }, sid);
         hist = p.items; if (p.raw) ssSet(HISTORY_KEY, p.raw); else ssDel(HISTORY_KEY);
-        msg.value = ""; msg.focus();
+        if (!fromForm) msg.value = "";
+        back.focus();
         return;
       }
       if (r.status === 409 || r.status === 422) {
@@ -493,8 +535,39 @@
         tmp.replaceWith(errCard);
         status.textContent = statusLine({ status: "error" });
       }
-      msg.focus();
+      back.focus();
     }
+
+    function renderCondForm() {
+      cfIndustry.appendChild(el("option", { text: "산업 선택", attrs: { value: "" } }));
+      INDUSTRIES.forEach(function (n) { cfIndustry.appendChild(el("option", { text: n, attrs: { value: n } })); });
+      COND_DEFS.forEach(function (d) {
+        var cb = el("input", { attrs: { type: "checkbox", id: "cf-" + d.id, "aria-describedby": "cf-" + d.id + "-d" } });
+        var row = el("div", { class: "cf-row" }, [el("label", { class: "cf-chip" }, [cb, document.createTextNode(" " + d.label)])]);
+        if (!d.fixed) {
+          var v = el("input", { attrs: { type: "number", id: "cf-" + d.id + "-v", value: String(d.def), min: String(d.min),
+            max: String(d.max), step: String(d.step), "aria-label": d.label + " 기준값(" + d.unit + ")", disabled: "" } });
+          v.dataset.cfv = "1"; v.dataset.cfFor = "cf-" + d.id;
+          cb.addEventListener("change", function () { v.disabled = busy || !cb.checked; });
+          row.appendChild(v); row.appendChild(document.createTextNode(d.unit));
+        }
+        row.appendChild(el("span", { class: "hint", text: d.desc, attrs: { id: "cf-" + d.id + "-d" } }));
+        cfChips.appendChild(row);
+      });
+      cf.open = hist.length === 0;
+    }
+    cfForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      cfErr.hidden = true;
+      var picks = COND_DEFS.filter(function (d) { return $("cf-" + d.id).checked; }).map(function (d) {
+        return { id: d.id, value: d.fixed ? null : $("cf-" + d.id + "-v").value };
+      });
+      var r = buildQuery(cfIndustry.value, picks);
+      if (r.ok) { submit(r.text); return; }
+      cfErr.textContent = r.msg; cfErr.hidden = false;
+      var f = r.field && (r.field.indexOf("cf-") === 0 ? $(r.field) : $("cf-" + r.field + "-v"));
+      if (f) f.focus();
+    });
 
     form.addEventListener("submit", function (e) { e.preventDefault(); submit(); });
     msg.addEventListener("keydown", function (e) {
@@ -521,6 +594,7 @@
       if (str(last.disclaimer)) disc.textContent = last.disclaimer;
     } else renderChips(null);
     syncEmpty();
+    renderCondForm();
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", init);
