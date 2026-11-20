@@ -24,7 +24,7 @@
 | `DELETE /api/logs/{session_id}` | 204(멱등) | 일치 |
 | 공통 오류 | `{code,message}`: 422 `INVALID_REQUEST`, 404 `NOT_FOUND`/`SESSION_NOT_FOUND`/`REPORT_NOT_FOUND`/`DRAFT_NOT_FOUND`, 405 `METHOD_NOT_ALLOWED`, 409 `SESSION_BUSY`, 500 `INTERNAL_ERROR` | 일치(§9 "오류 응답은 {code,message}만") |
 
-기타 엔드포인트: 정적 마운트(`/`)와 FastAPI 기본 `/docs`·`/openapi.json`뿐. API 라우트 추가 없음.
+기타 엔드포인트: 정적 마운트(`/`)와 FastAPI 기본 `/docs`·`/openapi.json`뿐. (`/docs`는 이후 D23-A로 로컬 swagger-ui 5.35.1로 실제 렌더되어 화면 대조 가능.) API 라우트 추가 없음.
 
 ## 3. 방식 결정: `responses=` 문서화 전용 (response_model 불채택)
 

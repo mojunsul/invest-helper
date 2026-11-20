@@ -145,6 +145,7 @@ async def chat(body):
 - 디렉터리 `frontend/`(DESIGN §1: `index.html`, `reports.html`, `*.js`) 를 `/`에 마운트(`html=True` → `/`는 `index.html`, `/reports.html`은 그대로). 라우터를 **먼저** 등록하고 마운트는 **마지막**이라 `/api/*`가 가린다. `/api/...` 미정의 경로는 §3 핸들러로 JSON 404.
 - D14/D15는 **같은 오리진의 상대경로**(`/api/chat` 등)로 호출한다. 별도 포트·CORS 불필요(§8).
 - `frontend/` 디렉터리가 없으면(D14 이전·테스트) 마운트를 생략하고 앱은 기동한다.
+- 예외: `/docs`는 D23-A로 로컬 swagger-ui-dist(`frontend/vendor/swagger/`)를 서빙한다(CSP 불변, `tests/test_d23_docs.py`). `/redoc`은 제공하지 않는다.
 - `StaticFiles`는 루트 밖 경로(`..`)를 거부한다. `frontend/`에는 비공개 파일(.env 등)을 두지 않는다 — `.env`는 repo 루트(frontend 밖)에 있음.
 
 ## 8. 보안
