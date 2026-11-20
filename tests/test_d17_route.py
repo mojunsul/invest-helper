@@ -197,6 +197,7 @@ def test_respond_answered_block_and_llm(env):
     "삼성전자 https://x.com [1].",                  # URL
     "회사는 좋습니다 [1].",                         # 회사명 없음
     "삼성전자 " + "가" * 400 + " [1]",              # 길이
+    "삼성전자 corp_name 은 좋습니다 [1].",          # 필드명 누출(D9b)
 ])
 def test_respond_invalid_summary_template(env, bad):
     o, d = go(env, bad)

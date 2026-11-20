@@ -375,6 +375,48 @@ def test_summary_llm(ev, monkeypatch):
     assert [e.payload["reason"] for e in ev if e.type == "llm_decision"][-1] == "TIMEOUT"
 
 
+def test_summary_key_leak(ev, monkeypatch):
+    out, seen = [""], []
+
+    async def cap(messages, *, json_mode, timeout_s=0):
+        seen.append(messages[0]["content"])
+        return out[0]
+
+    monkeypatch.setattr(llm, "complete", cap)
+    s = S(verdicts={"000001": V("PASS")}, metrics={"000001": row()}, status="answered")
+    for o in ("후보 1개 중 1개 충족. 종료 사유(limit_reason) 값은 없습니다.", "후보 1개 REPLAN_COUNT 0"):
+        out[0] = o
+        a = run(rs.respond(s))["answer"]
+        assert o not in a and "조건을 충족했습니다." in a
+        assert [e.payload["reason"] for e in ev if e.type == "llm_decision"][-1] == "invalid"
+    out[0] = "status 와 industry 는 일반 단어"  # 밑줄 없는 키는 통과
+    assert run(rs.respond(s))["answer"].startswith(out[0])
+    assert "limit_reason" not in seen[0]
+    run(rs.respond(S(verdicts={"000001": V("FAIL", [], ["ROE"])}, metrics={"000001": row(roe=1.0)},
+                     status="limit", replan_count=1)))
+    assert rs.SUMMARY_LIMIT_HINT in seen[-1]
+
+
+def test_leaks_key_unit(ev):
+    assert not rs._leaks_key("status industry", ["status", "industry"])
+    assert rs._leaks_key("a N_PASS b", ["n_pass"])
+    f = {"verdicts": {"000001": V("FAIL", [], ["ROE"])}, "metrics": {"000001": row(roe=1.0)}, "status": "limit"}
+    seen = []
+
+    async def cap(messages, *, json_mode, timeout_s=0):
+        seen.append(json.loads(messages[1]["content"]))
+        return "x"
+
+    import backend.agent.llm as L
+    orig = L.complete
+    L.complete = cap
+    try:
+        run(rs.respond(S(replan_count=1, **f)))
+    finally:
+        L.complete = orig
+    assert {k for k in seen[-1] if "_" in k} <= rs._SUMMARY_KEYS
+
+
 def test_respond_internal_exception(ev):
     o = run(rs.respond(S(conditions=None, verdicts={"1": V("PASS")}, status="answered")))
     assert o["status"] == "error" and o["answer"].endswith(rs.DISCLAIMER)
