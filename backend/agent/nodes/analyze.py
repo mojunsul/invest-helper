@@ -39,6 +39,8 @@ SYSTEM_PROMPT = """당신은 한국 주식 투자 보조 에이전트의 의도�
 - constraints: [{"metric","op": ">=" 또는 "<=" 또는 null,"value": 숫자 또는 null,"ref": "industry_avg" 또는 null}]
   metric은 ROE, ROA, OPM(영업이익률), PER, PBR, PSR, DEBT_RATIO(부채비율) 중 하나. value는 %·"배"를 뺀 숫자.
   "산업 평균 이하"는 value=null, ref="industry_avg", op="<=". value와 ref를 동시에 넣지 말 것.
+- unsupported_metrics: 위 7개 지표로 계산할 수 없는 지표를 요청하면 그 이름 원문 목록(예: Forward PER, EPS 성장률, 배당수익률, 목표주가). 이런 지표를 가장 비슷한 지원 지표(예: Forward PER→PER)로 바꿔 constraints에 넣지 말 것. constraints에는 7개 지표를 직접 말한 조건만 넣는다.
+  예: "Forward PER 10 이하 반도체" -> constraints [], unsupported_metrics ["Forward PER"]; "ROE 10% 이상, 배당수익률 3% 이상" -> constraints [ROE>=10], unsupported_metrics ["배당수익률"]
 - pending_metrics: 지표만 언급되고 값이 없는 지표 목록 ("ROE 높은", "PER만 더 낮게")
 - bare_number: 지표·산업 없이 숫자만 온 경우 그 숫자, 아니면 null
 - tools: 이 요청을 처리하는 데 호출해야 할 Tool 이름 목록. 아래 Tool 명세의 name에서만 고른다.
@@ -82,6 +84,7 @@ class AnalyzeOut(BaseModel):
     base_date: str | None = None
     constraints: list[_Con] = []
     pending_metrics: list[Metric] = []
+    unsupported_metrics: list = []
     bare_number: float | None = None
     want_disclosures: bool | None = None  # 호환용(구 응답·mock). 값이 오면 tools보다 우선
     tools: list[str] = []
@@ -121,6 +124,36 @@ def _normalize(o: AnalyzeOut) -> tuple[list[Constraint], list[Metric]]:
             cons.append({"metric": c.metric, "op": c.op or DEFAULT_OP[c.metric], "value": c.value, "ref": c.ref})
     have = {c["metric"] for c in cons}
     return cons, list(dict.fromkeys(m for m in pending if m not in have))
+
+
+_VARIANT_RE = re.compile(r"(forward|fwd|선행|예상|추정|컨센서스)\s*(PER|EPS|주가수익)|(?<![A-Za-z])EPS|목표\s*주가", re.I)
+_PER_RE = re.compile(r"(?<![A-Za-z])PER(?![A-Za-z])|주가수익", re.I)
+_BAD_CH = re.compile(r"[\x00-\x1f\x7f|`\[\]‘’“”※*]")
+_SUPPORTED = {x.casefold() for x in (*METRIC_LABEL, *METRIC_LABEL.values())}
+
+
+def _unsup_key(s: str) -> str:
+    return re.sub(r"\s", "", s).casefold()
+
+
+def _sanitize_unsupported(raw: list, msg: str, cons, pending) -> tuple[list[str], list[Constraint], list[Metric], bool]:
+    """LLM 신호 정제 + PER 변형 치환 백스톱. (목록, constraints, pending, PER 제거 여부)"""
+    items = [x for x in raw if isinstance(x, str)]
+    m = list(_VARIANT_RE.finditer(msg))
+    dropped = False
+    if m:
+        items += [x.group(0) for x in m]
+        if not _PER_RE.search(_VARIANT_RE.sub(" ", msg)):
+            before = len(cons) + len(pending)
+            cons = [c for c in cons if c["metric"] != "PER"]
+            pending = [p for p in pending if p != "PER"]
+            dropped = len(cons) + len(pending) < before
+    out: dict[str, str] = {}
+    for x in items:
+        x = re.sub(r"\s+", " ", _BAD_CH.sub(" ", x)).strip()
+        if x and len(x) <= 20 and x.casefold() not in _SUPPORTED:
+            out.setdefault(_unsup_key(x), x)
+    return list(out.values())[:3], cons, pending, dropped
 
 
 def _num(v: float) -> str:
@@ -210,6 +243,7 @@ async def analyze(state) -> dict:
     valid = [t for t in dict.fromkeys(o.tools) if registry.get(t)]  # 중복·미등록 제거
     unknown = len(set(o.tools)) - len(valid)
     new_cons, pending = _normalize(o)
+    unsup, new_cons, pending, dropped = _sanitize_unsupported(o.unsupported_metrics, msg, new_cons, pending)
     extracted = bool(o.industry or o.general_knowledge or new_cons or pending or o.bare_number is not None)
     intent: Intent = o.intent
     followup = last == "asked" and prev_intent in ("screen", "refine")
@@ -220,6 +254,8 @@ async def analyze(state) -> dict:
         intent = prev_intent
     elif last == "limit" and o.bare_number is not None and not (o.industry or new_cons or pending):
         intent = "refine"
+    if unsup and intent == "chitchat":  # 미지원 지표 요청이 잡담으로 분류되면 screen으로 보정(→ 산업·기준 되묻기 + 고지)
+        intent = "screen"
     reason = (o.reason or "")[:REASON_MAX]
     bus.publish(sid, "llm_decision", LlmDecision(kind="intent", decision=intent, reason=reason))
     out: dict = {"intent": intent, "intent_reason": reason}
@@ -233,6 +269,11 @@ async def analyze(state) -> dict:
         if cond is not None:
             bus.publish(sid, "llm_decision",
                         LlmDecision(kind="conditions", decision=_summary(cond, missing), reason=path))
+        if "unsupported_metrics" in out:
+            bus.publish(sid, "llm_decision", LlmDecision(
+                kind="conditions", reason="unsupported_metric",
+                decision=(f"unsupported={', '.join(out['unsupported_metrics'])}; "
+                          f"dropped={'PER(backstop)' if dropped else 'none'}")[:REASON_MAX]))
         out["missing"] = missing
         if missing:
             out.update(status="asked", clarify_question=question)
@@ -248,6 +289,8 @@ async def analyze(state) -> dict:
 
     if intent in ("lookup", "report_save"):
         out["target_stock"] = o.target_stock
+        if unsup:
+            out["unsupported_metrics"] = unsup
         return end(intent, prev_c, [] if o.target_stock else ["target_stock"], "어느 종목인가요?")
 
     # screen / refine
@@ -326,4 +369,6 @@ async def analyze(state) -> dict:
         (industry_q or "어떤 산업을 대상으로 할까요?") if "industry" in missing else None,
         _threshold_q(cond, number_ambiguous) if "threshold" in missing else None) if p)
     out["conditions"] = cond
+    if unsup:
+        out["unsupported_metrics"] = unsup
     return end(path, cond, missing, q)

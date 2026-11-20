@@ -72,6 +72,15 @@ def _cond_line(state) -> str:
             + _cons_text(cond).replace(", ", " · "))
 
 
+def _unsupported_notice(state) -> str | None:
+    items = state.get("unsupported_metrics") or []
+    if not items:
+        return None
+    sup = "·".join("PER(Trailing, 확정 실적 기준)" if m == "PER" else lb for m, lb in METRIC_LABEL.items())
+    return (f"※ 요청하신 {', '.join(f'‘{x}’' for x in items)}은(는) 제공 데이터(확정 실적 기준 재무)로 계산할 수 없어 "
+            f"조건에서 제외했습니다. 지원 지표: {sup}.")
+
+
 def _counts(state):
     vs = (state.get("verdicts") or {}).values()
     p = sum(v["status"] == "PASS" for v in vs)
@@ -350,6 +359,8 @@ async def _screen(state, status, out) -> str:
             tpl = f"‘{cond.get('industry')}’ 후보 {n}개 중 조건을 충족한 종목이 없습니다(재계획 {r}회, {reason})."
         lines += [await _summary(sid, facts, tpl), ""]
     lines.append(_cond_line(state))
+    if status in ("answered", "limit") and (un := _unsupported_notice(state)):
+        lines.append(un)
     if status in ("answered", "limit") and n and (note := await _theme_notice(state)):
         lines.append(note)
     lines += [x for x in (_basis_line(state), _avg_line(state)) if x]
@@ -383,7 +394,7 @@ async def _screen(state, status, out) -> str:
         out["clarify_question"] = q
         out["last_result_summary"] = {"top_codes": [], "pass_count": 0, "top": []}
     else:
-        lines = [error_text(state), *_replan_lines(state)]
+        lines = [error_text(state), *([un] if (un := _unsupported_notice(state)) else []), *_replan_lines(state)]
     fn = _fin_note(state)
     if fn:
         lines += ["", fn]
@@ -526,6 +537,9 @@ async def _build(state) -> dict:
     else:  # report_save answered
         t = state["target_stock"]
         body = f"‘{state['report_draft'][t]['stock_name']}({t})’ 리포트 초안이 준비되었습니다. 저장은 리포트 저장 기능을 이용하세요."
+    un = _unsupported_notice(state)
+    if un and (status == "asked" and intent in (*SR, "lookup") or intent == "lookup" and status != "asked"):
+        body = un + "\n\n" + body  # screen의 answered/limit/error는 _screen이 이미 부착
     out["answer"] = body + "\n\n" + DISCLAIMER
     return out
 

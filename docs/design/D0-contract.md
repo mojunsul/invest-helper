@@ -139,6 +139,7 @@ class AgentState(TypedDict, total=False):
     conditions: Conditions                  # 기본 {industry:None,market:None,base_date:None,constraints:[],want_disclosures:False,pending_metrics:[]}
     target_stock: str | None                # lookup/report_save 대상(6자리 코드 또는 사용자 입력명 원문). D7 analyze는 원문만 추출, 이름→코드 변환 함수는 D2가 제공, 호출은 D8
     missing: list[Missing]                  # 되묻기 필요 조건 목록. 기본 []
+    unsupported_metrics: list[str]          # 사용자가 요청했으나 7개 지표 밖이라 조건에서 제외한 지표 이름(D20). 요청 단위, 세션 메모리 비저장. 기본 []
     search_scope: SearchScope               # 기본 {market:conditions.market, extra_industries:[], candidate_limit:None}. 초기화 주체: plan 노드(D7)
     expansion_step: int                     # 기본 0. 0..3 = 마지막으로 적용한 확장 단계 번호(건너뛰면 건너뛴 번호 포함해 점프)
     replan_count: int                       # 기본 0. 0..REPLAN_MAX = 실제 재계획 횟수

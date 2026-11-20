@@ -78,6 +78,7 @@ class AgentState(TypedDict, total=False):
     conditions: Conditions
     target_stock: str | None
     missing: list[Missing]
+    unsupported_metrics: list[str]
     search_scope: SearchScope
     expansion_step: int
     replan_count: int
