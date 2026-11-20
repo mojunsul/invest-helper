@@ -63,6 +63,9 @@ test("buildPatchBody", () => {
   assert.deepStrictEqual(R.buildPatchBody(cur, "A", "m"), { noop: true });
   assert.deepStrictEqual(R.buildPatchBody({ name: "A", memo: null }, "A", ""), { noop: true });
   assert.ok(R.buildPatchBody(cur, "   ", "m").error);
+  assert.deepStrictEqual(R.buildPatchBody(cur, "A", "m", "2026-12-01"), { body: { review_date: "2026-12-01" } });
+  assert.deepStrictEqual(R.buildPatchBody({ name: "A", memo: "m", review_date: "2026-12-01" }, "A", "m", ""), { body: { review_date: "" } });
+  assert.deepStrictEqual(R.buildPatchBody({ name: "A", memo: "m", review_date: null }, "A", "m", ""), { noop: true });
   assert.deepStrictEqual(Object.keys(R.buildPatchBody(cur, "B", "n").body).sort(), ["memo", "name"]);
 });
 

@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 from typing import Callable
 
 from fastapi import APIRouter, Path, Request, Response
@@ -53,6 +54,15 @@ class _Edit(BaseModel):
     name: str | None = None
     memo: str | None = Field(default=None, max_length=1000)
 
+    review_date: str | None = Field(default=None, pattern=r"^(\d{4}-\d{2}-\d{2})?$")
+
+    @field_validator("review_date")
+    @classmethod
+    def _review(cls, v: str | None) -> str | None:
+        if v:
+            date.fromisoformat(v)  # 2026-02-30 등 무효 날짜는 ValueError -> 422
+        return v
+
     @field_validator("name")
     @classmethod
     def _name(cls, v: str | None) -> str | None:
@@ -72,7 +82,7 @@ class CreateBody(_Edit):
 class PatchBody(_Edit):
     @model_validator(mode="after")
     def _any(self):
-        if self.name is None and self.memo is None:
+        if self.name is None and self.memo is None and self.review_date is None:
             raise ValueError("empty")
         return self
 
@@ -95,13 +105,13 @@ def create(body: CreateBody):
     d = memory.get_report_draft(body.session_id, body.stock_code)
     if not isinstance(d, dict) or d.get("stock_code") != body.stock_code or not isinstance(d.get("metrics"), dict):
         raise ApiError(404, "DRAFT_NOT_FOUND")
-    rid, dup = sqlite.save_report(d, body.name, body.memo)
+    rid, dup = sqlite.save_report(d, body.name, body.memo, body.review_date)
     return {"id": rid, "duplicate_of": dup}
 
 
 @router.patch("/{report_id}")
 def patch(body: PatchBody, report_id: int = _Id):
-    r = sqlite.update_report(report_id, body.name, body.memo)
+    r = sqlite.update_report(report_id, body.name, body.memo, body.review_date)
     if r is None:
         raise ApiError(404, "REPORT_NOT_FOUND")
     return r

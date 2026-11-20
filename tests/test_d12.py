@@ -240,3 +240,62 @@ def test_lookup_style_draft_saveable(client):
     i = post(client).json()["id"]
     g = client.get(f"/api/reports/{i}").json()
     assert g["base_date"] == "2024Q4" and g["industry_avg"] == {} and g["disclosures"] is None
+
+
+# ---- D12b review_date ----
+def _post(client, **kw):
+    d = draft()
+    seed(d)
+    return client.post("/api/reports", json={"session_id": SID, "stock_code": d["stock_code"], **kw})
+
+
+def test_review_migration_idempotent():
+    con = sqlite3.connect(config.DB_PATH)
+    con.execute("DROP TABLE reports")
+    con.execute("CREATE TABLE reports(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, stock_code TEXT NOT NULL, "
+                "stock_name TEXT NOT NULL, base_date TEXT, metrics_json TEXT NOT NULL, industry_avg_json TEXT NOT NULL, "
+                "disclosures_json TEXT, disclaimer TEXT NOT NULL, memo TEXT NOT NULL DEFAULT '', "
+                "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)")
+    con.execute("INSERT INTO reports(name,stock_code,stock_name,base_date,metrics_json,industry_avg_json,disclaimer,memo,"
+                "created_at,updated_at) VALUES('old','005930','삼성전자','2024-12-31','{}','{}','d','m','t','t')")
+    con.commit()
+    con.close()
+    db.init_table()
+    db.init_table()
+    r = db.get_report(1)
+    assert r["name"] == "old" and r["memo"] == "m" and r["review_date"] is None
+
+
+def test_review_post_get(client):
+    assert _post(client, review_date="2026-12-01").status_code == 201
+    assert client.get("/api/reports/1").json()["review_date"] == "2026-12-01"
+    assert client.get("/api/reports").json()[0]["review_date"] == "2026-12-01"
+    _post(client)
+    assert client.get("/api/reports/2").json()["review_date"] is None
+
+
+def test_review_patch(client):
+    _post(client, name="n", memo="m")
+    before = client.get("/api/reports/1").json()
+    r = client.patch("/api/reports/1", json={"review_date": "2027-01-02"})
+    assert r.status_code == 200 and r.json()["review_date"] == "2027-01-02"
+    assert r.json()["name"] == "n" and r.json()["memo"] == "m" and r.json()["updated_at"] > before["updated_at"]
+    r = client.patch("/api/reports/1", json={"review_date": ""})
+    assert r.status_code == 200 and r.json()["review_date"] is None
+
+
+@pytest.mark.parametrize("v", ["2026-02-30", "2026/12/01", "20261201", 123])
+def test_review_invalid(client, v):
+    assert _post(client, review_date=v).status_code == 422
+    _post(client)
+    assert client.patch("/api/reports/1", json={"review_date": v}).status_code == 422
+
+
+def test_review_past_ok(client):
+    assert _post(client, review_date="2000-01-01").status_code == 201
+    assert client.patch("/api/reports/1", json={"review_date": "2000-01-02"}).status_code == 200
+
+
+def test_review_not_in_duplicate(client):
+    _post(client, review_date="2026-12-01")
+    assert _post(client, review_date="2027-01-01").json()["duplicate_of"] == [1]

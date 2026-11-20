@@ -104,6 +104,8 @@ test("timelineRows", () => {
 test("buildSaveBody", () => {
   assert.deepStrictEqual(T.buildSaveBody("s", "005930", "  ", ""), { session_id: "s", stock_code: "005930" });
   assert.deepStrictEqual(T.buildSaveBody("s", "005930", " n ", "m"), { session_id: "s", stock_code: "005930", name: "n", memo: "m" });
+  assert.deepStrictEqual(T.buildSaveBody("s", "005930", "", "", "2026-12-01"), { session_id: "s", stock_code: "005930", review_date: "2026-12-01" });
+  assert.deepStrictEqual(T.buildSaveBody("s", "005930", "", "", ""), { session_id: "s", stock_code: "005930" });
 });
 
 // ---- D14c ----

@@ -36,6 +36,16 @@ test("renderDetail은 수정·삭제 버튼을 모두 그린다", async () => {
   require("../../frontend/reports.js");
   await new Promise((r) => setTimeout(r, 20));
   const btns = find(byId.detail, (n) => n.tagName === "button").map((b) => b.textContent);
-  assert.ok(btns.includes("이름·메모 수정"), btns.join("|"));
+  assert.ok(btns.includes("이름·메모·재검토일 수정"), btns.join("|"));
   assert.ok(btns.includes("삭제"), btns.join("|"));
+});
+
+test("D12b: 상세에 재검토 예정일 줄, 수정 폼에 date 입력", async () => {
+  const txt = (n) => n.textContent;
+  assert.ok(txt(byId.detail).includes("재검토 예정일 -"));
+  const edit = find(byId.detail, (n) => n.tagName === "button" && n.textContent === "이름·메모·재검토일 수정")[0];
+  edit.listeners.click();
+  const ri = find(byId.detail, (n) => n.tagName === "input" && n.attrs.id === "edit-review");
+  assert.strictEqual(ri.length, 1);
+  assert.strictEqual(ri[0].attrs.type, "date");
 });

@@ -155,11 +155,11 @@ analyze ─┬─(chitchat)─────────────────�
 
 ```
 reports(id, name, stock_code, stock_name, base_date, metrics_json, industry_avg_json,
-        disclosures_json, disclaimer, memo, created_at, updated_at)
+        disclosures_json, disclaimer, memo, review_date, created_at, updated_at)
 run_logs(id, session_id, seq, ts, type, payload_json)
 ```
-- 중복: `(stock_code, base_date)` 동일 레코드 존재 시 **저장은 진행**하고 응답에 `duplicate_of:[id…]` 포함(F3015).
-- 수정 가능 필드: `name`, `memo`만(F3016). 지표 값은 불변 — 근거가 바뀌지 않게.
+- 중복: `(stock_code, base_date)` 동일 레코드 존재 시 **저장은 진행**하고 응답에 `duplicate_of:[id…]` 포함(F3015). `review_date`는 중복 판정과 무관.
+- 수정 가능 필드: `name`, `memo`, `review_date`(재검토 예정일, YYYY-MM-DD, 선택)만(F3016). 지표·기준일·산업 평균·공시는 불변 — 근거가 바뀌지 않게.
 - 저장은 Tool이 아니라 API/흐름이 직접 수행(사용자가 이미 정한 값이므로).
 
 ## 9. API 명세 (FastAPI, Pydantic)
@@ -169,8 +169,8 @@ run_logs(id, session_id, seq, ts, type, payload_json)
 | `POST /api/chat` | `{session_id, message}` | `{answer, status, verdicts[], industry_avg, steps[], tool_calls[], replans[], disclaimer, missing_api_key, saveable[], intent, conditions, metrics, disclosures, evidence}` (`intent`~`evidence`는 표시용이며 저장 요청에 포함하지 않는다. 리포트 저장은 서버 draft 기준) |
 | `GET /api/reports` | – | `[ReportSummary]` |
 | `GET /api/reports/{id}` | – | `Report` |
-| `POST /api/reports` | `{session_id, stock_code, name?, memo?}` (채팅 결과 draft를 서버가 조회) | `{id, duplicate_of:[]}` |
-| `PATCH /api/reports/{id}` | `{name?, memo?}` | `Report` |
+| `POST /api/reports` | `{session_id, stock_code, name?, memo?, review_date?}` (채팅 결과 draft를 서버가 조회) | `{id, duplicate_of:[]}` |
+| `PATCH /api/reports/{id}` | `{name?, memo?, review_date?}` (`""`이면 재검토 예정일 삭제) | `Report` |
 | `DELETE /api/reports/{id}` | – | `204` |
 | `GET /api/logs` | – | `[{session_id, started_at, event_count}]` |
 | `GET /api/logs/{session_id}` | – | `[Event]` (seq 순) |

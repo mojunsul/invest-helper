@@ -51,14 +51,16 @@
     return Number.isSafeInteger(n) && n >= 1 ? n : null;
   }
 
-  function buildPatchBody(cur, name, memo) {
+  function buildPatchBody(cur, name, memo, review) {
     var n = String(name == null ? "" : name).trim();
     if (!n) return { error: "이름은 비울 수 없습니다." };
     var m = String(memo == null ? "" : memo);
+    var r = String(review == null ? "" : review);
     var c = isObj(cur) ? cur : {};
     var body = {};
     if (n !== c.name) body.name = n;
     if (m !== (c.memo == null ? "" : c.memo)) body.memo = m;
+    if (r !== (c.review_date || "")) body.review_date = r;
     return Object.keys(body).length ? { body: body } : { noop: true };
   }
 
@@ -137,7 +139,8 @@
         var li = el("li");
         li.appendChild(open);
         li.appendChild(document.createTextNode(" " + str(x.stock_name) + "(" + str(x.stock_code) + ") · 기준일 " +
-          (typeof x.base_date === "string" && x.base_date ? x.base_date : "-") + " · 저장 " + fmtDateTime(x.created_at) + " "));
+          (typeof x.base_date === "string" && x.base_date ? x.base_date : "-") + " · 저장 " + fmtDateTime(x.created_at) +
+          (typeof x.review_date === "string" && x.review_date ? " · 재검토 " + x.review_date : "") + " "));
         li.appendChild(deleteControl(id, function () {
           li.remove();
           if (!listEl.children.length) setEmpty(true);
@@ -184,27 +187,30 @@
       return box;
     }
 
-    var EDIT_NOTE = "지표·기준일은 분석 당시 조회한 근거라 수정할 수 없습니다. 바꾸려면 채팅에서 다시 분석해 새로 저장하세요.";
+    var EDIT_NOTE = "이름·메모·재검토 예정일만 수정할 수 있습니다. 지표·기준일은 분석 당시 조회한 근거라 수정할 수 없습니다. 바꾸려면 채팅에서 다시 분석해 새로 저장하세요.";
 
     function editBlock(rep) {
       var box = el("div");
-      var btn = el("button", { text: "이름·메모 수정", attrs: { type: "button" } });
+      var btn = el("button", { text: "이름·메모·재검토일 수정", attrs: { type: "button" } });
       btn.addEventListener("click", function () {
         btn.hidden = true;
         var ni = el("input", { attrs: { type: "text", id: "edit-name", maxlength: "100" } });
         ni.value = str(rep.name);
         var mi = el("textarea", { attrs: { id: "edit-memo", maxlength: "1000", rows: "4" } });
         mi.value = str(rep.memo);
+        var ri = el("input", { attrs: { type: "date", id: "edit-review" } });
+        ri.value = rep.review_date || "";
         var save = el("button", { text: "저장", attrs: { type: "submit" } });
         var cancel = el("button", { text: "취소", attrs: { type: "button" } });
         var form = el("form", { class: "edit-form" }, [
           el("label", { text: "이름", attrs: { for: "edit-name" } }), ni,
           el("label", { text: "메모", attrs: { for: "edit-memo" } }), mi,
+          el("label", { text: "재검토 예정일", attrs: { for: "edit-review" } }), ri,
           el("p", { class: "hint", text: EDIT_NOTE }), save, cancel]);
         cancel.addEventListener("click", function () { form.remove(); btn.hidden = false; btn.focus(); });
         form.addEventListener("submit", async function (e) {
           e.preventDefault();
-          var b = buildPatchBody(rep, ni.value, mi.value);
+          var b = buildPatchBody(rep, ni.value, mi.value, ri.value);
           if (b.error) { showMsg(b.error); return; }
           if (b.noop) { showMsg("변경 사항이 없습니다."); return; }
           save.disabled = cancel.disabled = true;
@@ -229,6 +235,7 @@
       d(p("기준일 " + (typeof rep.base_date === "string" && rep.base_date ? rep.base_date : "-")));
       var times = "저장 " + fmtDateTime(rep.created_at);
       if (rep.updated_at && rep.updated_at !== rep.created_at) times += " · 수정 " + fmtDateTime(rep.updated_at);
+      d(p("재검토 예정일 " + (rep.review_date || "-")));
       d(p(times));
       d(metricTable(rep));
       d(p("재무 기준: " + (typeof mt.fiscal_period === "string" && mt.fiscal_period ? mt.fiscal_period : "-") + (mt.estimated === true ? " *" : "")));

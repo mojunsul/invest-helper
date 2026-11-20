@@ -84,12 +84,14 @@
     return rows;
   }
 
-  function buildSaveBody(sid, stockCode, nameVal, memoVal) {
+  function buildSaveBody(sid, stockCode, nameVal, memoVal, reviewVal) {
     var body = { session_id: sid, stock_code: stockCode };
     var n = String(nameVal == null ? "" : nameVal).trim();
     if (n) body.name = n;
     var m = String(memoVal == null ? "" : memoVal);
     if (m) body.memo = m;
+    var r = String(reviewVal == null ? "" : reviewVal);
+    if (r) body.review_date = r;
     return body;
   }
 
@@ -257,17 +259,19 @@
       var title = el("strong");
       var inName = el("input", { attrs: { type: "text", id: uid + "n", maxlength: "100" } });
       var inMemo = el("textarea", { attrs: { id: uid + "m", maxlength: "1000", rows: "2" } });
+      var inReview = el("input", { attrs: { type: "date", id: uid + "r" } });
       var ok = el("button", { text: "확정", attrs: { type: "button" } });
       var cancel = el("button", { text: "취소", attrs: { type: "button" } });
       var msgEl = el("div", { class: "save-msg", attrs: { "aria-live": "polite" } });
       [title, el("label", { text: "이름 (선택)", attrs: { for: uid + "n" } }), inName,
-       el("label", { text: "메모 (선택)", attrs: { for: uid + "m" } }), inMemo, ok, cancel, msgEl]
+       el("label", { text: "메모 (선택)", attrs: { for: uid + "m" } }), inMemo,
+       el("label", { text: "재검토 예정일 (선택)", attrs: { for: uid + "r" } }), inReview, ok, cancel, msgEl]
         .forEach(function (n) { box.appendChild(n); });
       cancel.addEventListener("click", function () { box.hidden = true; if (cur) cur.btn.focus(); });
       ok.addEventListener("click", async function () {
         var c = cur; if (!c) return;
         ok.disabled = cancel.disabled = true;
-        var r = await C.api("POST", "/api/reports", buildSaveBody(sid, c.code, inName.value, inMemo.value));
+        var r = await C.api("POST", "/api/reports", buildSaveBody(sid, c.code, inName.value, inMemo.value, inReview.value));
         ok.disabled = cancel.disabled = false;
         msgEl.textContent = "";
         if (r.ok && r.data) {
@@ -278,7 +282,7 @@
           if (dup.length) msgEl.appendChild(el("div", { text: "같은 종목·기준일로 이미 저장된 리포트가 " + dup.length +
             "건 있습니다(#" + dup.join(", #") + "). 중복은 reports.html에서 삭제할 수 있습니다." }));
           c.btn.textContent = "저장됨"; c.btn.disabled = true;
-          inName.value = inMemo.value = "";
+          inName.value = inMemo.value = inReview.value = "";
         } else {
           msgEl.textContent = r.data.code === "DRAFT_NOT_FOUND"
             ? "저장할 결과가 없습니다. 먼저 해당 종목을 조회하세요." : r.data.message;

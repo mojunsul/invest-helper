@@ -83,6 +83,7 @@ def delete_report(report_id: int) -> bool: ...                  # 삭제 여부
 ## 5. 응답 모델
 
 ```
+# D12b가 `review_date`를 추가해 이 정의를 대체한다(기준: docs/design/D12b-review-date.md).
 ReportSummary = {id, name, stock_code, stock_name, base_date, created_at, updated_at}
 Report        = ReportSummary + {metrics, industry_avg, disclosures, disclaimer, memo}
                 (metrics/industry_avg/disclosures는 JSON 역직렬화된 객체; disclosures는 null 가능)

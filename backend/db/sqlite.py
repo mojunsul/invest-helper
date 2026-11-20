@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS reports(
 CREATE INDEX IF NOT EXISTS reports_stock ON reports(stock_code, base_date);
 """
 _COLS = ("id, name, stock_code, stock_name, base_date, metrics_json, industry_avg_json, "
-         "disclosures_json, disclaimer, memo, created_at, updated_at")
+         "disclosures_json, disclaimer, memo, created_at, updated_at, review_date")
 
 
 def _connect() -> sqlite3.Connection:
@@ -35,7 +35,7 @@ def _now() -> str:
 
 def _summary(r: tuple) -> dict:
     return {"id": r[0], "name": r[1], "stock_code": r[2], "stock_name": r[3], "base_date": r[4],
-            "created_at": r[10], "updated_at": r[11]}
+            "created_at": r[10], "updated_at": r[11], "review_date": r[12]}
 
 
 def _report(r: tuple) -> dict:
@@ -48,16 +48,19 @@ def init_table() -> None:
     try:
         with con:
             con.executescript(_DDL)
+            if "review_date" not in {r[1] for r in con.execute("PRAGMA table_info(reports)")}:
+                con.execute("ALTER TABLE reports ADD COLUMN review_date TEXT")  # 기존 DB 마이그레이션, 기존 행은 NULL
     finally:
         con.close()
 
 
-def save_report(draft: dict, name: str | None, memo: str | None) -> tuple[int, list[int]]:
+def save_report(draft: dict, name: str | None, memo: str | None,
+                review_date: str | None = None) -> tuple[int, list[int]]:
     now = _now()
     disc = draft.get("disclosures")
     row = (name if name is not None else f"{draft['stock_name']} 리포트", draft["stock_code"], draft["stock_name"],
            draft.get("base_date"), _dumps(draft["metrics"]), _dumps(draft.get("industry_avg") or {}),
-           None if disc is None else _dumps(disc), DISCLAIMER, memo or "", now, now)
+           None if disc is None else _dumps(disc), DISCLAIMER, memo or "", now, now, review_date or None)
     with _write_lock:
         con = _connect()
         try:
@@ -67,7 +70,7 @@ def save_report(draft: dict, name: str | None, memo: str | None) -> tuple[int, l
                     (row[1], row[3]))]
                 cur = con.execute(
                     "INSERT INTO reports(name, stock_code, stock_name, base_date, metrics_json, industry_avg_json, "
-                    "disclosures_json, disclaimer, memo, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)", row)
+                    "disclosures_json, disclaimer, memo, created_at, updated_at, review_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", row)
                 return cur.lastrowid, dup
         finally:
             con.close()
@@ -90,8 +93,9 @@ def get_report(report_id: int) -> dict | None:
     return _report(rows[0]) if rows else None
 
 
-def update_report(report_id: int, name: str | None, memo: str | None) -> dict | None:
-    # 컬럼은 name/memo 두 개 고정 화이트리스트만 사용, 값은 전부 ? 바인딩
+def update_report(report_id: int, name: str | None, memo: str | None,
+                  review_date: str | None = None) -> dict | None:
+    # 컬럼은 name/memo/review_date 고정 화이트리스트만 사용, 값은 전부 ? 바인딩
     sets, args = ["updated_at=?"], [_now()]
     if name is not None:
         sets.append("name=?")
@@ -99,6 +103,9 @@ def update_report(report_id: int, name: str | None, memo: str | None) -> dict | 
     if memo is not None:
         sets.append("memo=?")
         args.append(memo)
+    if review_date is not None:
+        sets.append("review_date=?")
+        args.append(review_date or None)  # "" -> NULL
     with _write_lock:
         con = _connect()
         try:
