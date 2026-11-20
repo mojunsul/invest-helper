@@ -274,18 +274,19 @@ def test_events_order_payload(env, caplog):
     ev.clear()
     run(an.analyze(st("비밀원문질문")))
     assert [(e.type, e.payload.get("kind") or e.payload.get("stage")) for e in ev] == [
-        ("stage_start", "analyze"), ("llm_decision", "intent"), ("llm_decision", "conditions"), ("stage_end", "analyze")]
+        ("stage_start", "analyze"), ("llm_decision", "intent"), ("llm_decision", "tools"),
+        ("llm_decision", "conditions"), ("stage_end", "analyze")]
     assert ev[1].payload["decision"] == "screen" and len(ev[1].payload["reason"]) == 200
-    assert ev[2].payload["decision"] == ("industry=반도체; ROE>=10; PER<=industry_avg; pending=[]; missing=[]")
-    assert ev[2].payload["reason"] == "new_screen"
-    assert ev[3].payload["intent"] == "screen"
+    assert ev[3].payload["decision"] == ("industry=반도체; ROE>=10; PER<=industry_avg; pending=[]; missing=[]")
+    assert ev[3].payload["reason"] == "new_screen"
+    assert ev[4].payload["intent"] == "screen"
     blob = json.dumps([e.payload for e in ev], ensure_ascii=False) + caplog.text
     assert KEY not in blob and "비밀원문질문" not in blob
 
 
 def test_chitchat_has_no_conditions_event(env):
     go(env, OUT("chitchat"))
-    assert [e.payload.get("kind") for e in env[3] if e.type == "llm_decision"] == ["intent"]
+    assert [e.payload.get("kind") for e in env[3] if e.type == "llm_decision"] == ["intent", "tools"]
 
 
 def test_prompt_has_no_prev_dialog_and_key(env):
@@ -553,3 +554,71 @@ def test_diag_via_root_handler_with_mask_filter(lenv, monkeypatch):
     for t in ("WARNING", "backend.agent.llm", "err_code=organization_spend_limit_exceeded"):
         assert t in out
     assert KEY not in out
+
+
+# ---------- D7d: Tool 선택 ----------
+@pytest.fixture
+def tools_loaded(monkeypatch):
+    """다른 테스트(test_d1)가 레지스트리를 비웠어도 동작하도록 4개 Tool을 보장."""
+    import importlib
+    names = {"find_stock_candidates", "get_financials", "search_disclosures", "search_filing_text"}
+    if not names <= set(base._TOOLS):
+        monkeypatch.setattr(base, "_TOOLS", {})
+        for m in ("stock_candidates", "financials", "disclosures", "filing_text"):
+            importlib.reload(importlib.import_module(f"backend.tools.{m}"))
+
+
+def tools_ev(env):
+    return [e.payload for e in env[3] if e.type == "llm_decision" and e.payload["kind"] == "tools"]
+
+
+def test_d7d_prompt_has_describe_and_payload_keys(env, tools_loaded):
+    go(env, OUT("chitchat"))
+    msgs = env[0]["msgs"][0]
+    assert json.dumps(registry.describe(), ensure_ascii=False) in msgs[0]["content"]
+    assert set(json.loads(msgs[1]["content"])) == {"message", "prev_conditions", "prev_intent", "last_status"}
+
+
+def test_d7d_unknown_and_dup_removed(env, tools_loaded):
+    go(env, OUT(industry="반도체", constraints=[{"metric": "ROE", "value": 10}],
+                tools=["find_stock_candidates", "find_stock_candidates", "get_financials", "evil_tool"]))
+    p = tools_ev(env)[0]
+    assert p["decision"] == "find_stock_candidates,get_financials"
+    assert "unknown=1" in p["reason"] and "match=yes" in p["reason"] and "evil_tool" not in json.dumps(p)
+
+
+def test_d7d_disclosure_choice_sets_flag(env, tools_loaded):
+    r = go(env, OUT(industry="반도체", constraints=[{"metric": "ROE", "value": 10}],
+                    tools=["find_stock_candidates", "get_financials", "search_disclosures"]))
+    assert r["conditions"]["want_disclosures"] is True
+    assert "search_disclosures" in tools_ev(env)[0]["decision"]
+    r = go(env, OUT("refine", constraints=[{"metric": "ROE", "value": 12}], tools=["find_stock_candidates"]),
+           conditions=cond(industry="반도체", want_disclosures=True), prev_intent="screen")
+    assert r["conditions"]["want_disclosures"] is True
+
+
+def test_d7d_no_disclosure_choice_default_false(env, tools_loaded):
+    r = go(env, OUT(industry="반도체", constraints=[{"metric": "ROE", "value": 10}],
+                    tools=["find_stock_candidates", "get_financials"]))
+    assert r["conditions"]["want_disclosures"] is False
+
+
+def test_d7d_chitchat_mismatch(env, tools_loaded):
+    r = go(env, OUT("chitchat", tools=["get_financials"]))
+    p = tools_ev(env)[0]
+    assert p["decision"] == "none" and "match=no" in p["reason"] and "plan" not in r
+
+
+def test_d7d_non_list_tools_retries(env, tools_loaded):
+    go(env, [OUT("chitchat", tools="get_financials"), OUT("chitchat")])
+    assert env[0]["llm"] == 2
+
+
+def test_d7d_rule_tools_table(tools_loaded):
+    assert pl.rule_tools("screen", False) == ["find_stock_candidates", "get_financials"]
+    assert pl.rule_tools("refine", True) == ["find_stock_candidates", "get_financials", "search_disclosures"]
+    assert pl.rule_tools("lookup", True) == ["get_financials"]
+    assert pl.rule_tools("filing_qa", False) == ["search_filing_text"]
+    assert pl.rule_tools("report_save", False) == [] and pl.rule_tools("chitchat", True) == []
+    for i in ("screen", "refine", "lookup", "filing_qa"):
+        assert all(registry.get(t) for t in pl.rule_tools(i, True))

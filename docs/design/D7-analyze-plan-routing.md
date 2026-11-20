@@ -113,7 +113,7 @@ for rec in replan_log:                         # D9가 재계획 시 replan_log�
 | chitchat | plan 미진입(§6) |
 
 - 공시 호출 노드·시점은 D8/D9 확정(D0 §6-11). plan은 `search_disclosures` step을 만들지 않는다.
-- Tool 이름은 `registry.get(name)`으로 등록 여부를 점검하는 테스트를 둔다(Agent/LLM에 `describe()`를 넘기지 않는다 — plan은 LLM 미사용).
+- Tool 이름은 `registry.get(name)`으로 등록 여부를 점검하는 테스트를 둔다(`describe()`는 analyze가 LLM에 넘긴다(D7d). plan은 LLM 미사용).
 - 이벤트: `stage_start/end(plan)`만(재실행마다 재발행, D0 §3).
 
 ### 5-3. D8 위임 사항 (후보별 전개·종목 변환)

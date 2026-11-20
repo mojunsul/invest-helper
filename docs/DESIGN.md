@@ -90,8 +90,8 @@ analyze ─┬─(chitchat)─────────────────�
 
 | 노드 | LLM | 하는 일 |
 |---|---|---|
-| analyze | O | 의도 분류 + 조건 추출(구조화 출력). 못 뽑은 조건은 `None`. 이전 조건과 병합(§7). 의도·이유를 이벤트로 발행 |
-| plan | 규칙 우선 | 의도·조건으로 Tool 순서 결정. screen=[candidates, financials(후보별)], 공시 요청 시 +disclosures, filing_qa=[search_filing_text]. 불필요 Tool 제외 |
+| analyze | O | 의도 분류 + 조건 추출(구조화 출력). 못 뽑은 조건은 `None`. 이전 조건과 병합(§7). 의도·이유를 이벤트로 발행. Tool 명세(`describe()`)를 받아 필요한 Tool 이름 선택(`tools`, D7d) |
+| plan | 규칙 우선 | 의도·조건으로 Tool 순서 결정. screen=[candidates, financials(후보별)], 공시 요청 시 +disclosures, filing_qa=[search_filing_text]. 불필요 Tool 제외. LLM 선택은 검증(미등록 제거)·비교 후 규칙 우선, 공시 여부는 LLM 선택 반영(D7d) |
 | execute | X | 계획대로 호출. 이전 결과를 `tool_cache`(키: tool+입력)에서 먼저 조회 → 재사용. 개별 실패는 사유 기록 후 계속 |
 | judge | X | `constraints.py`로 계산·판단. 충족/불충족/판단불가 분류. 끝에서 `want_disclosures`이고 통과 종목이 있으면 통과 종목에 `search_disclosures` 호출(공시 실패는 종목별 표기, 판정·status 불변) |
 | respond | O(문장화) | 결과 표·근거는 코드가 만들고 LLM은 요약 문장만. 면책 문구 코드 부착. 리포트 초안 생성. filing_qa는 근거 문단·출처(공시명·접수번호·일자·링크·발췌) 블록을 코드가 붙임 |
@@ -136,7 +136,7 @@ analyze ─┬─(chitchat)─────────────────�
 | `stage_start` / `stage_end` | `stage`, (analyze 종료 시) `intent`, `reason` |
 | `tool_call` | `tool`, `input`, `cache_hit` |
 | `tool_result` | `tool`, `ok`, `error_code`, `duration_ms`, `summary` (원본 전체 X, 건수·핵심값) |
-| `llm_decision` | `kind`(intent/…), `decision`, `reason` |
+| `llm_decision` | `kind`(intent/tools/…), `decision`, `reason` |
 | `replan` | `count`, `trigger`, `change` (예: 시장 확대) |
 | `final` | `status`(answered/asked/limit/error) |
 

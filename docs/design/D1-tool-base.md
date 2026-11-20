@@ -87,14 +87,14 @@ async def get_financials(inp: FinInput) -> ToolResult: ...
 
 ```python
 def load_all() -> None                       # backend/tools/*.py(base·registry·__init__ 제외)를 pkgutil.iter_modules로 순회 import → 등록. MSG(코드→고정문구 dict)는 base.py 정의
-def describe() -> list[dict]                 # [{"name","kind","description","input_schema"(JSON Schema dict)}] — 이것만 Agent/LLM 프롬프트에 전달 (`kind` 추가는 D1c)
+def describe() -> list[dict]                 # [{"name","kind","description","input_schema"(JSON Schema dict)}] — 이것만 LLM 프롬프트에 전달(analyze, D7d) (`kind` 추가는 D1c)
 def get(name) -> Tool | None                 # 내부용(실행 노드 D8, 테스트)
 async def call(name, raw) -> ToolResult      # 미등록 이름 → fail("INVALID_INPUT","알 수 없는 도구입니다."), 그 외 tool.run(raw)
 def cache_key_for(name, raw) -> str | None   # normalize 후 cache_key. 미등록 이름 또는 입력 검증 실패면 None(캐시 우회)
 ```
 
 - `describe()` 결과에는 `fn`, `requires_keys`, `timeout_s`, API 경로 등 내부 구현을 넣지 않는다. `input_schema`의 `title`/`$defs`는 pydantic 출력 그대로 허용.
-- Agent(plan 노드 D7)는 `describe()`만 보고 `PlanStep{tool, input}`을 만들고, 실행은 D8이 `registry.call`로 한다.
+- analyze(D7d)가 `describe()`를 LLM 프롬프트에 넣고, plan은 규칙으로 `PlanStep{tool, input}`을 만들며, 실행은 D8이 `registry.call`로 한다.
 
 ## 5. tool_cache 접점
 

@@ -68,7 +68,7 @@ class Event(BaseModel):
 | stage_end | `stage: Stage`, `intent?: str`, `reason?: str` (analyze에만 채움) |
 | tool_call | `tool: str`, `input: dict`, `cache_hit: bool` |
 | tool_result | `tool: str`, `ok: bool`, `error_code?: ErrorCode`, `duration_ms: int`, `summary: str` (건수·핵심값; 캐시 적중이면 duration_ms=0) |
-| llm_decision | `kind: Literal["intent","conditions","summary"]`, `decision: str`, `reason: str` |
+| llm_decision | `kind: Literal["intent","conditions","summary","tools"]`, `decision: str`, `reason: str` |
 | replan | `count: int`(1..REPLAN_MAX), `trigger: Literal["no_pass","no_candidates"]`, `change: Literal["market_expand","similar_industry","limit_up"]` |
 | final | `status: Literal["answered","asked","limit","error"]` |
 

@@ -12,6 +12,8 @@ from backend.agent.state import Conditions, Constraint, ErrorRecord, Intent, Mar
 from backend.events import bus
 from backend.events.bus import LlmDecision, StageEnd, StageStart
 from backend.identity.resolve import resolve_industry
+from backend.agent.nodes.plan import rule_tools
+from backend.tools import registry
 from backend.tools.base import MSG
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,11 @@ SYSTEM_PROMPT = """당신은 한국 주식 투자 보조 에이전트의 의도�
   "산업 평균 이하"는 value=null, ref="industry_avg", op="<=". value와 ref를 동시에 넣지 말 것.
 - pending_metrics: 지표만 언급되고 값이 없는 지표 목록 ("ROE 높은", "PER만 더 낮게")
 - bare_number: 지표·산업 없이 숫자만 온 경우 그 숫자, 아니면 null
-- want_disclosures: 공시 요청이 언급되면 true, 아니면 null
+- tools: 이 요청을 처리하는 데 호출해야 할 Tool 이름 목록. 아래 Tool 명세의 name에서만 고른다.
+  Tool 없이 답할 수 있으면(인사·잡담·보고서 저장) [].
+  예: "반도체 ROE 10% 이상 종목, 공시도" -> ["find_stock_candidates","get_financials","search_disclosures"]
+      "반도체 ROE 10% 이상" -> ["find_stock_candidates","get_financials"] (공시를 요청하지 않으면 search_disclosures 제외)
+      "삼성전자 PER 알려줘" -> ["get_financials"], "안녕" -> []
 - target_stock: lookup/report_save/filing_qa 대상 종목의 이름 또는 6자리 코드 원문, 아니면 null
 입력은 JSON {"message","prev_conditions","prev_intent","last_status"} 입니다."""
 
@@ -72,7 +78,8 @@ class AnalyzeOut(BaseModel):
     constraints: list[_Con] = []
     pending_metrics: list[Metric] = []
     bare_number: float | None = None
-    want_disclosures: bool | None = None
+    want_disclosures: bool | None = None  # 호환용(구 응답·mock). 값이 오면 tools보다 우선
+    tools: list[str] = []
     target_stock: str | None = None
 
     _b = field_validator("bare_number", mode="before")(_no_bool)
@@ -143,8 +150,16 @@ def _threshold_q(cond: Conditions, number_ambiguous: bool) -> str:
     return " ".join(parts)
 
 
+def tool_specs() -> list[dict]:
+    registry.load_all()
+    return registry.describe()
+
+
 async def _ask_llm(payload: dict) -> AnalyzeOut | None:
-    msgs = [{"role": "system", "content": SYSTEM_PROMPT},
+    specs = tool_specs()
+    logger.info("analyze tools offered=%s", [t["name"] for t in specs])
+    system = SYSTEM_PROMPT + "\n\n사용 가능한 Tool 명세(JSON):\n" + json.dumps(specs, ensure_ascii=False)
+    msgs = [{"role": "system", "content": system},
             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}]
     for _ in range(2):  # invalid는 1회 재호출. LlmError는 그대로 전파
         o = _parse(await llm.complete(msgs, json_mode=True))
@@ -174,6 +189,8 @@ async def analyze(state) -> dict:
     if o is None:
         return fail("llm", "API_ERROR", MSG["API_ERROR"])
 
+    valid = [t for t in dict.fromkeys(o.tools) if registry.get(t)]  # 중복·미등록 제거
+    unknown = len(set(o.tools)) - len(valid)
     new_cons, pending = _normalize(o)
     extracted = bool(o.industry or new_cons or pending or o.bare_number is not None)
     intent: Intent = o.intent
@@ -190,6 +207,11 @@ async def analyze(state) -> dict:
     out: dict = {"intent": intent, "intent_reason": reason}
 
     def end(path: str, cond: Conditions | None, missing: list, question: str | None) -> dict:
+        rule = rule_tools(intent, bool(cond and cond["want_disclosures"]))
+        bus.publish(sid, "llm_decision", LlmDecision(
+            kind="tools", decision=",".join(rule) or "none",
+            reason=(f"llm={','.join(valid) or 'none'}; unknown={unknown}; "
+                    f"match={'yes' if set(valid) == set(rule) else 'no'}")[:REASON_MAX]))
         if cond is not None:
             bus.publish(sid, "llm_decision",
                         LlmDecision(kind="conditions", decision=_summary(cond, missing), reason=path))
@@ -221,6 +243,8 @@ async def analyze(state) -> dict:
         cond["base_date"] = o.base_date
     if o.want_disclosures is not None:
         cond["want_disclosures"] = o.want_disclosures
+    elif "search_disclosures" in valid:
+        cond["want_disclosures"] = True
     industry_q = None
     if o.industry:
         try:

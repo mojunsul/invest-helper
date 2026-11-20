@@ -9,6 +9,13 @@ from backend.tools.stock_candidates import MAX_LIMIT
 logger = logging.getLogger(__name__)
 
 
+def rule_tools(intent, want_disclosures: bool) -> list[str]:
+    """규칙상 이 요청이 쓰는 Tool 이름 목록(D7d §5-3). analyze가 LLM 선택과 비교."""
+    if intent in ("screen", "refine"):
+        return ["find_stock_candidates", "get_financials"] + (["search_disclosures"] if want_disclosures else [])
+    return {"lookup": ["get_financials"], "filing_qa": ["search_filing_text"]}.get(intent, [])
+
+
 async def plan(state) -> dict:
     sid = state["session_id"]
     bus.publish(sid, "stage_start", StageStart(stage="plan"))

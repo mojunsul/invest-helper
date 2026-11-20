@@ -43,7 +43,7 @@ class ToolResultPayload(BaseModel):
 
 
 class LlmDecision(BaseModel):
-    kind: Literal["intent", "conditions", "summary"]
+    kind: Literal["intent", "conditions", "summary", "tools"]
     decision: str
     reason: str
 
