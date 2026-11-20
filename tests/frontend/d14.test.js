@@ -207,3 +207,23 @@ test("tableModel", () => {
   // limit 카드는 이전 턴 draft 오인 방지로 저장 불가
   assert.strictEqual(T.tableModel({ ...res, status: "limit" }).groups[0].rows[0].saveable, false);
 });
+
+test("parseHistory / pushHistory", () => {
+  const sid = "s1", rec = (q) => ({ q, res: { status: "answered" }, at: "t" });
+  assert.deepStrictEqual(T.parseHistory(JSON.stringify({ sid, items: [rec("a")] }), sid), [rec("a")]);
+  for (const raw of [null, "", "{bad", "[]", JSON.stringify({ sid, items: {} }), JSON.stringify({ sid: "x", items: [rec("a")] })])
+    assert.deepStrictEqual(T.parseHistory(raw, sid), [], String(raw));
+  const mixed = JSON.stringify({ sid, items: [rec("a"), { q: 1, res: {} }, { q: "b", res: [] }, null] });
+  assert.deepStrictEqual(T.parseHistory(mixed, sid), [rec("a")]);
+
+  let items = [];
+  for (let i = 0; i < 11; i++) items = T.pushHistory(items, rec("q" + i), sid).items;
+  assert.strictEqual(items.length, 10);
+  assert.strictEqual(items[0].q, "q1");
+  assert.strictEqual(items[9].q, "q10");
+  const p = T.pushHistory(items, rec("q11"), sid);
+  assert.deepStrictEqual(T.parseHistory(p.raw, sid), p.items);
+  const small = T.pushHistory([rec("a"), rec("b")], rec("c"), sid, 10, JSON.stringify({ sid, items: [rec("c")] }).length + 5);
+  assert.deepStrictEqual(small.items.map((x) => x.q), ["c"]);
+  assert.deepStrictEqual(T.pushHistory([rec("a")], rec("b"), sid, 10, 5), { items: [], raw: null });
+});

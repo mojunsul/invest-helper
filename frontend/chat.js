@@ -202,7 +202,29 @@
     return "처리하지 못했습니다";
   }
 
-  var exported = { SESSION_KEY: SESSION_KEY, UUID_RE: UUID_RE, uuidV4: uuidV4, getSessionId: getSessionId,
+  // ---- D14d 카드 복원 (sessionStorage) ----
+  var HISTORY_KEY = "invest_helper_cards", HISTORY_MAX = 10, HISTORY_MAX_LEN = 1000000;
+
+  function parseHistory(raw, sid) {
+    var v;
+    try { v = JSON.parse(raw); } catch (e) { return []; }
+    if (!isObj(v) || v.sid !== sid || !Array.isArray(v.items)) return [];
+    return v.items.filter(function (x) { return isObj(x) && typeof x.q === "string" && isObj(x.res); });
+  }
+
+  function pushHistory(items, rec, sid, max, maxLen) {
+    max = max == null ? HISTORY_MAX : max; maxLen = maxLen == null ? HISTORY_MAX_LEN : maxLen;
+    var out = items.concat([rec]).slice(-max);
+    while (out.length) {
+      var raw = JSON.stringify({ sid: sid, items: out });
+      if (raw.length <= maxLen) return { items: out, raw: raw };
+      out = out.slice(1);
+    }
+    return { items: [], raw: null };
+  }
+
+  var exported = { HISTORY_KEY: HISTORY_KEY, HISTORY_MAX: HISTORY_MAX, HISTORY_MAX_LEN: HISTORY_MAX_LEN,
+                   parseHistory: parseHistory, pushHistory: pushHistory, SESSION_KEY: SESSION_KEY, UUID_RE: UUID_RE, uuidV4: uuidV4, getSessionId: getSessionId,
                    timelineRows: timelineRows, buildSaveBody: buildSaveBody, INTENT_TEXT: INTENT_TEXT, METRICS: METRICS,
                    METRIC_LABEL: METRIC_LABEL, fmtMetric: fmtMetric, condChips: condChips, groupVerdicts: groupVerdicts,
                    viewKind: viewKind, headline: headline, statusLine: statusLine, avgText: avgText, tableModel: tableModel };
@@ -216,6 +238,10 @@
         chipsEl = $("chips"), tl = $("timeline"), sideSum = $("side-sum"), sidePanel = $("side-panel"), side = $("side");
     var store = { get: C.storageGet, set: C.storageSet };
     var sid = getSessionId(store), busy = false, seq = 0;
+    function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+    function ssSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* 조용히 포기 */ } }
+    function ssDel(k) { try { sessionStorage.removeItem(k); } catch (e) { /* 조용히 포기 */ } }
+    var hist = parseHistory(ssGet(HISTORY_KEY), sid);
     if (window.matchMedia && matchMedia("(max-width: 899px)").matches) sidePanel.open = false;
 
     function setBusy(b) {
@@ -383,25 +409,25 @@
       body.appendChild(el("p", { class: "hint", text: "※ 공시 원문 발췌이며, 공시 접수일 이후 변동은 반영되지 않습니다." }));
     }
 
-    function cardHead(li, question, res) {
+    function cardHead(li, question, res, at) {
       var id = "q" + (++seq);
       var h = el("div", { class: "run-head" }, [el("h2", { text: question, attrs: { id: id } })]);
       if (res) {
         var st = str(res.status);
         if (str(res.intent)) h.appendChild(el("span", { class: "badge", text: has(INTENT_TEXT, res.intent) ? INTENT_TEXT[res.intent] : res.intent }));
         if (st && st !== "answered") h.appendChild(el("span", { class: "badge", text: C.STATUS_TEXT[st] || st }));
-        h.appendChild(el("time", { class: "hint", text: C.fmtTime(new Date().toISOString()) }));
+        h.appendChild(el("time", { class: "hint", text: C.fmtTime(at || new Date().toISOString()) }));
       }
       var art = el("article", { attrs: { "aria-labelledby": id } }, [h]);
       li.appendChild(art);
       return art;
     }
 
-    function renderCard(res, question) {
+    function renderCard(res, question, at) {
       res = isObj(res) ? res : {};
       var st = str(res.status), kind = viewKind(res);
       var li = el("li", { class: "run" + (st && st !== "answered" ? " status-" + st : "") });
-      var art = cardHead(li, question, res), body = el("div", { class: "run-body" }), sp = makeSavePanel();
+      var art = cardHead(li, question, res, at), body = el("div", { class: "run-body" }), sp = makeSavePanel();
       art.appendChild(body);
       if (kind === "table") renderTable(res, sp, body);
       else if (kind === "metric") renderMetric(res, sp, body);
@@ -422,6 +448,12 @@
       return li;
     }
 
+    // 이전 카드 저장 비활성(최신 결과만 저장)
+    function disableOldSaves() {
+      Array.prototype.forEach.call(log.querySelectorAll(".save-btn"), function (b) { b.disabled = true; });
+      Array.prototype.forEach.call(log.querySelectorAll(".save-panel"), function (p) { p.hidden = true; });
+    }
+
     function pendingCard(question) {
       var li = el("li", { class: "run", attrs: { "aria-busy": "true" } });
       cardHead(li, question, null).appendChild(el("p", { class: "hint", text: "분석 중…" }));
@@ -438,10 +470,9 @@
       setBusy(false);
       if (r.ok) {
         var res = isObj(r.data) ? r.data : {};
-        // 이전 카드 저장 비활성(최신 결과만 저장)
-        Array.prototype.forEach.call(log.querySelectorAll(".save-btn"), function (b) { b.disabled = true; });
-        Array.prototype.forEach.call(log.querySelectorAll(".save-panel"), function (p) { p.hidden = true; });
-        var card = renderCard(res, text);
+        disableOldSaves();
+        var at = new Date().toISOString();
+        var card = renderCard(res, text, at);
         tmp.replaceWith(card);
         banner.hidden = res.missing_api_key !== true;
         banner.textContent = res.missing_api_key === true ? "API 키가 설정되지 않았습니다. 서버의 .env를 확인하세요." : "";
@@ -449,6 +480,8 @@
         if (isObj(res.conditions)) renderChips(res.conditions);
         showTimeline(res, card);
         status.textContent = statusLine(res);
+        var p = pushHistory(hist, { q: text, res: res, at: at }, sid);
+        hist = p.items; if (p.raw) ssSet(HISTORY_KEY, p.raw); else ssDel(HISTORY_KEY);
         msg.value = ""; msg.focus();
         return;
       }
@@ -471,12 +504,23 @@
       if (busy) return;
       sid = uuidV4();
       C.storageSet(SESSION_KEY, sid);
+      hist = []; ssDel(HISTORY_KEY);
       log.textContent = ""; tl.textContent = ""; sideSum.textContent = "실행 과정";
       status.textContent = "";
       banner.hidden = true; banner.textContent = "";
       renderChips(null); syncEmpty();
     });
-    renderChips(null); syncEmpty();
+    hist.forEach(function (h) {  // 오래된 순, 최신이 위
+      disableOldSaves();
+      log.insertBefore(renderCard(h.res, h.q, str(h.at) || undefined), log.firstChild);
+    });
+    if (hist.length) {
+      var last = hist[hist.length - 1].res;
+      showTimeline(last, log.firstChild);
+      renderChips(isObj(last.conditions) ? last.conditions : null);
+      if (str(last.disclaimer)) disc.textContent = last.disclaimer;
+    } else renderChips(null);
+    syncEmpty();
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", init);
