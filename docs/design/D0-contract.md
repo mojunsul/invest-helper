@@ -191,9 +191,9 @@ class AgentState(TypedDict, total=False):
 |---|---|---|---|---|
 | DATA_GO_KR_KEY | str | "" | Tool 호출 시 | 금융위 주가·재무 API |
 | DART_API_KEY | str | "" | Tool 호출 시 | corpCode/company |
-| GMS_API_KEY | str | "" | LLM 호출 시 | OpenAI 호환 |
-| GMS_BASE_URL | str | `https://gms.ssafy.io/gmsapi/api.openai.com/v1` | N | |
-| GMS_MODEL | str | `gpt-4o-mini` | N | |
+| GMS_API_KEY | str | "" | LLM 호출 시 | GMS Anthropic Messages |
+| GMS_BASE_URL | str | `https://gms.ssafy.io/gmsapi/api.anthropic.com/v1` | N | |
+| GMS_MODEL | str | `claude-haiku-5-5` | N | |
 | REPLAN_MAX | int | 3 | N | 파싱 실패 시 3, 그 외 1~3으로 클램프 |
 | TOOL_TIMEOUT_S | float | 10.0 | (신규, 코드 상수) | TIMEOUT 판정 기준. `backend/config.py` 모듈 상수이며 `settings` 속성이 아님 |
 | DB_PATH | str | `invest_helper.db` | (신규, 코드 상수) | SQLite 경로 |

@@ -342,11 +342,12 @@ def test_llm_error_mapping(monkeypatch, dart, code):
     assert run_tool().error.code == code
 
 
-def test_missing_gms_key(monkeypatch, dart):
+def test_no_gms_key_needed_for_local_embed(monkeypatch, dart):
     asyncio.run(bld.run(["005930"]))
     monkeypatch.setattr(base, "settings", Settings())
+    assert base._TOOLS["search_filing_text"].requires_keys == ()
     r = run_tool()
-    assert r.error.code == "MISSING_API_KEY"
+    assert not (r.error and r.error.code == "MISSING_API_KEY")
 
 
 def test_chromadb_missing(monkeypatch, dart):

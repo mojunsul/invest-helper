@@ -19,11 +19,18 @@ python -m pip install -r requirements.txt
 
 `.env.example`을 `.env`로 복사하고 키를 채운다. `.env`는 커밋하지 않는다(`.gitignore` 등록됨).
 
+기존 `.env`에 `GMS_BASE_URL=https://gms.ssafy.io/gmsapi/api.openai.com/v1`·`GMS_MODEL=gpt-4o-mini`가 남아 있으면 두 줄을 지우거나(코드 기본값 사용) 아래로 고친다. 그대로 두면 LLM 호출이 실패해 의도 분석이 기본 응답으로 떨어진다.
+
+```
+GMS_BASE_URL=https://gms.ssafy.io/gmsapi/api.anthropic.com/v1
+GMS_MODEL=claude-haiku-5-5
+```
+
 | 키 | 용도 |
 |---|---|
 | `DATA_GO_KR_KEY` | 금융위 주가·재무 (data.go.kr) |
 | `DART_API_KEY` | DART 기업정보·공시 |
-| `GMS_API_KEY`, `GMS_BASE_URL`, `GMS_MODEL` | LLM (SSAFY GMS, OpenAI 호환) |
+| `GMS_API_KEY`, `GMS_BASE_URL`, `GMS_MODEL` | LLM (SSAFY GMS Anthropic 경로, 기본 `claude-haiku-5-5`) |
 | `REPLAN_MAX` | 재계획 최대 횟수 (1~3, 기본 3) |
 
 ## 3. 산업 캐시 구축 (앱 실행 전 1회)
@@ -76,7 +83,7 @@ JS 단위 테스트는 node가 설치된 경우에만 실행되고 없으면 ski
 | data.go.kr 금융위원회 `GetStockSecuritiesInfoService_V2` (주가) | 후보 시세·시가총액 | 미확인 |
 | data.go.kr 금융위원회 `getSummFinaStat_V2` (재무) | 재무 요약 | 미확인 |
 | OpenDART (`corpCode.xml`, `company.json`, `list.json`) | 종목·산업 캐시, 공시 | 미확인 |
-| SSAFY GMS (OpenAI 호환) | 의도 분석·요약 | 미확인 |
+| SSAFY GMS (Anthropic Messages, `claude-haiku-5-5`) | 의도 분석·요약 | 미확인 |
 
 각 서비스 페이지에서 확인하기 전까지 "미확인"으로 둔다.
 
@@ -84,7 +91,7 @@ JS 단위 테스트는 node가 설치된 경우에만 실행되고 없으면 ski
 
 - 제외: 점수화 추천, 산업 전망, 관심 종목 비교, 스케줄러 수집, 세션 영속화, Forward PER 등 예상 실적 기반 지표, F3020/3021/3023.
 - 리포트 수정(F3016): 이름(`name`)과 메모(`memo`)만 고칠 수 있고, 리포트 삭제도 할 수 있다. 수정·삭제 결과는 리포트 화면에 바로 반영된다. 종목·기준일·지표 값·산업 평균·공시 목록은 수정할 수 없다. 이 값들은 저장 시점에 조회·계산한 근거를 그대로 남긴 것이라, 손으로 고치면 출처 데이터와 맞지 않는 리포트가 된다. API도 `PATCH /api/reports/{id}`에 `name`·`memo` 외 필드가 오면 422로 거부한다. 다른 기준일이나 종목이 필요하면 채팅에서 다시 분석한 뒤 새 리포트로 저장한다. 명세 F3016 예시("메모와 표시 이름을 고치거나 리포트를 삭제")와 같은 범위다.
-- 공시 원문 검색(`search_filing_text`)의 `kind=local`은 데이터 출처가 로컬 색인이라는 뜻이다(질의 임베딩은 GMS 호출).
+- 공시 원문 검색(`search_filing_text`)의 `kind=local`은 데이터 출처가 로컬 색인이라는 뜻이다(질의 임베딩도 로컬 해시 `local-hash-v1`, 네트워크 호출 없음).
 - 세션 메모리는 프로세스 메모리라 서버를 재시작하면 사라진다. 리포트·실행 로그는 SQLite에 남는다.
 - 실제 외부 API 호출 기반 검증과 브라우저 수동 시나리오는 아직 수행하지 않았다(미확인).
 

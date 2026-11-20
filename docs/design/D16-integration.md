@@ -174,7 +174,7 @@ DESIGN §1이 `README.md # 실행법, 외부 API 출처·이용조건, 구현 �
 - D3: G1~G7(`basDt` 전체 일자 페이지 조회 가능 여부, `numOfRows` 상한, 응답 변형(단건 dict·0건 `""`), 한도·키 오류 `resultCode`, 휴장일, 숫자 문자열, 우선주·ETF 혼입), `mrktCtg` 값 집합(`KOSDAQ GLOBAL`/`KONEX`), 상수 `DEFAULT_LIMIT/MAX_LIMIT/PAGE/LOOKBACK_DAYS/timeout`. G1 불가 시 D3 재설계(후보별 조회 폭증).
 - D4: H1~H7(재무 `bizYear` 소급, `likeSrtnCd` 지원, 0건/단건 형태, `resultCode` 값, 금융업(은행) 필드 구성 — DESIGN §10-2 시나리오가 은행), `fnclDebtRto`가 연결·별도 행 모두에 있는지, 호출 한도, `register(timeout_s)` 상향 필요 여부.
 - D5: G1~G4(뷰어 URL 열림, `end_de`·`page_count` 최대·정렬, `bgn_de` 범위 제한, 키·한도 status, 정정공시 접두, 0건 013 vs 빈 list), 조회 기간 180일·`TITLE_MAX` 적정성.
-- D7: GMS `response_format=json_object` 지원 여부, `gpt-4o-mini` 지연·한도, 의도 분류 정확도(refine vs screen, 숫자만/종목명만 응답), `LLM_TIMEOUT_S` 실측.
+- D7: GMS Anthropic `system` 필드 전달·JSON_HINT 준수 여부(D7c), `claude-haiku-5-5` 지연·한도, 의도 분류 정확도(refine vs screen, 숫자만/종목명만 응답), `LLM_TIMEOUT_S` 실측.
 - D8: `FIN_CONCURRENCY`(금융위 한도), 한 라운드 전체 소요, PASS 100건 시 공시 호출 수 상한 필요 여부.
 - D9: `MAX_ROWS/MAX_EXCLUDED/TOP_N/SUMMARY_MAX`, 요약 숫자 검증 오탐 정도, `limit_up` 효과 없는 소진 1회, `RECURSION_LIMIT=40`(재계획 최대 회전 시 미초과 — 모의로는 확인됨).
 - D10~D13: 세션 동시 요청·`database is locked` 빈도(busy timeout 공통화), 스레드 발행 순서, `run_agent`의 요청당 `build_graph()` 컴파일 비용, 취소 시 `final` 합성 발행, `/api/chat` 총 소요(재계획 포함)가 브라우저/프록시 타임아웃 이내인지.

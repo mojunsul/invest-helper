@@ -408,15 +408,52 @@ def test_complete_ok_and_request(lenv, monkeypatch):
     seen = {}
 
     def h(req):
-        seen["url"], seen["auth"], seen["body"] = str(req.url), req.headers["authorization"], json.loads(req.content)
-        return httpx.Response(200, json={"choices": [{"message": {"content": "hi"}}]})
+        seen["url"], seen["h"], seen["body"] = str(req.url), req.headers, json.loads(req.content)
+        return httpx.Response(200, json={"content": [{"type": "text", "text": "hi"}]})
 
     mock_http(monkeypatch, h)
     assert run(llm.complete([{"role": "user", "content": "x"}], json_mode=True)) == "hi"
-    assert seen["url"] == "https://gms.test/v1/chat/completions" and seen["auth"] == f"Bearer {KEY}"
-    assert seen["body"]["response_format"] == {"type": "json_object"} and seen["body"]["model"] == "gpt-4o-mini"
+    assert seen["url"] == "https://gms.test/v1/messages"
+    assert seen["h"]["x-api-key"] == KEY and seen["h"]["anthropic-version"] == "2023-06-01" and "authorization" not in seen["h"]
+    assert seen["body"]["model"] == Settings().GMS_MODEL and seen["body"]["max_tokens"] == llm.LLM_MAX_TOKENS
+    assert "response_format" not in seen["body"] and seen["body"]["system"] == llm.JSON_HINT
     run(llm.complete([], json_mode=False))
-    assert "response_format" not in seen["body"]
+    assert "system" not in seen["body"]
+
+
+def test_body_messages():
+    ms = [{"role": "system", "content": "A"}, {"role": "user", "content": "u"},
+          {"role": "system", "content": "B"}, {"role": "assistant", "content": "a"}]
+    b = llm._body(ms, False)
+    assert b["system"] == "A\n\nB" and [m["role"] for m in b["messages"]] == ["user", "assistant"]
+    assert llm._body(ms, True)["system"] == "A\n\nB\n\n" + llm.JSON_HINT
+    assert "system" not in llm._body([{"role": "user", "content": "u"}], False)
+
+
+def test_text_extraction(lenv, monkeypatch):
+    out = {"content": [{"type": "text", "text": "a"}, {"type": "tool_use", "id": "x"}, {"type": "text", "text": "b"}]}
+    mock_http(monkeypatch, lambda req: httpx.Response(200, json=out))
+    assert run(llm.complete([], json_mode=False)) == "ab"
+    mock_http(monkeypatch, lambda req: httpx.Response(200, json={"content": []}))
+    with pytest.raises(llm.LlmError) as ei:
+        run(llm.complete([], json_mode=False))
+    assert ei.value.code == "API_ERROR"
+
+
+@pytest.mark.parametrize("status,code", [(429, "RATE_LIMIT"), (529, "API_ERROR")])
+def test_anthropic_error_body(lenv, monkeypatch, caplog, status, code):
+    et = "rate_limit_error" if status == 429 else "overloaded_error"
+    mock_http(monkeypatch, lambda req: httpx.Response(
+        status, json={"type": "error", "error": {"type": et, "message": f"m {KEY}"}}))
+    with caplog.at_level(logging.WARNING), pytest.raises(llm.LlmError) as ei:
+        run(llm.complete([], json_mode=True))
+    assert ei.value.code == code and f"err_type={et}" in caplog.text and "err_code=None" in caplog.text
+    assert KEY not in caplog.text
+
+
+def test_parse_code_fence():
+    o = an._parse('```json\n{"intent": "screen", "industry": "반도체"}\n```')
+    assert o is not None and o.intent == "screen" and o.industry == "반도체"
 
 
 @pytest.mark.parametrize("status,code", [(429, "RATE_LIMIT"), (500, "API_ERROR"), (401, "API_ERROR")])

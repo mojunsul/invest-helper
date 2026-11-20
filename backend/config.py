@@ -22,8 +22,8 @@ class Settings:
     DATA_GO_KR_KEY: str = field(default="", repr=False)
     DART_API_KEY: str = field(default="", repr=False)
     GMS_API_KEY: str = field(default="", repr=False)
-    GMS_BASE_URL: str = "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
-    GMS_MODEL: str = "gpt-4o-mini"
+    GMS_BASE_URL: str = "https://gms.ssafy.io/gmsapi/api.anthropic.com/v1"
+    GMS_MODEL: str = "claude-haiku-5-5"
     REPLAN_MAX: int = 3
 
 

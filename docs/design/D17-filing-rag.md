@@ -45,12 +45,13 @@ judge·재계획은 거치지 않는다(D0 §4 규칙 1~6은 screen/refine 전�
 
 ## 4. 임베딩
 
-- 1순위: **GMS 임베딩**(`settings.GMS_BASE_URL` + `/embeddings`, OpenAI 호환), `EMBED_MODEL = "text-embedding-3-small"`. `backend/agent/llm.py`에 함수 1개 추가:
+- **기본값(D7c, 2026-11-20 확정): `EMBED_MODEL = "local-hash-v1"`** — GMS에 쓸 수 있는 임베딩 모델이 없음을 실호출로 확인(OpenAI 경로 429 조직 한도, Gemini 임베딩 미제공). 아래 GMS 임베딩은 경로가 다시 열릴 때를 위한 보존 경로이며 기본 설정에서는 호출되지 않는다.
+- (보존) **GMS 임베딩**(`settings.GMS_BASE_URL` + `/embeddings`, OpenAI 호환), `EMBED_MODEL = "text-embedding-3-small"`. `backend/agent/llm.py`에 함수 1개 추가:
   ```python
   async def embed(texts: list[str], *, timeout_s: float = LLM_TIMEOUT_S) -> list[list[float]]
   # POST {"model": EMBED_MODEL, "input": texts}; 응답 data[*].embedding을 index 순으로. 오류 매핑·키 검사·로그 규칙은 complete()와 동일(LlmError)
   ```
-- 대안(GMS 임베딩 사용 불가 시): `EMBED_MODEL = "local-hash-v1"` — 한글 문자 2-gram을 1024차원에 해시(`hashlib.blake2b`)해 빈도 벡터를 L2 정규화하는 **순수 파이썬 함수**(~15줄, 의존성·네트워크 없음). 의미 검색 품질은 낮지만 키워드 겹침 검색은 되며 Vector DB 구조는 그대로다. multilingual 임베딩 모델(torch) 도입은 하지 않는다(의존성 과다).
+- `local-hash-v1`(현재 기본) — 한글 문자 2-gram을 1024차원에 해시(`hashlib.blake2b`)해 빈도 벡터를 L2 정규화하는 **순수 파이썬 함수**(~15줄, 의존성·네트워크 없음). 의미 검색 품질은 낮지만 키워드 겹침 검색은 되며 Vector DB 구조는 그대로다. multilingual 임베딩 모델(torch) 도입은 하지 않는다(의존성 과다).
 - GMS 임베딩 호출 타임아웃은 `EMBED_TIMEOUT_S=15`(Tool `timeout_s=20`보다 짧게, 구현 반영).
 - 선택 지점은 `filing_text.py`의 상수 `EMBED_MODEL` 한 곳이고, 공용 진입점 `async def embed_texts(texts) -> list[list[float]]`가 상수로 분기한다(스크립트·Tool 공유).
 - **불일치 방지**: 스크립트는 컬렉션 metadata에 `embed_model`을 기록하고, Tool은 `metadata.embed_model != EMBED_MODEL`이면 `NO_INDEX`("현재 임베딩 설정과 다른 색인입니다")로 처리한다(차원 불일치 예외 방지).
@@ -124,7 +125,7 @@ class FilingQuery(BaseModel):                         # extra="forbid" 금지(D1
 | 색인 디렉터리·컬렉션 없음/비어 있음/임베딩 불일치 | `NO_INDEX` | "공시 원문 색인이 아직 없습니다." / "현재 임베딩 설정과 다른 색인입니다." | 비대상 |
 | 지정 종목 미색인 | `NO_INDEX` | "해당 종목의 공시 원문은 아직 색인되지 않았습니다." | 비대상 |
 | 유사도 기준 이상 결과 0건 | `NO_RESULT` | "관련 공시 문단을 찾지 못했습니다." | 대상 |
-| GMS 키 없음(1순위 임베딩) | `MISSING_API_KEY`(fatal) | D1 고정 문구 | 비대상 |
+| GMS 키 없음(GMS 임베딩 선택 시만. 기본 local-hash-v1은 키 불필요) | `MISSING_API_KEY`(fatal) | D1 고정 문구 | 비대상 |
 | 임베딩 TIMEOUT/RATE_LIMIT/API_ERROR, 입력 오류 | 해당 공통 코드 | D1 고정 문구 | 비대상 |
 | chromadb 미설치·기타 예외 | `API_ERROR` | D1 고정 문구 | 비대상 |
 
@@ -211,8 +212,8 @@ class FilingQuery(BaseModel):                         # extra="forbid" 금지(D1
 
 1. **색인 기반**: `llm.embed`, `filing_text.py`의 상수·`embed_texts`·로컬 해시 임베딩·컬렉션 열기 헬퍼, `scripts/build_filing_index.py`(청크·수집·색인·`--clear/--force`), `requirements.txt`·`.gitignore`. 테스트는 가짜 DART·가짜 임베딩·임시 `INDEX_DIR`.
 2. **Tool**: `search_filing_text` 등록·실패 매핑. 테스트는 임시 디렉터리에 가짜 임베딩으로 만든 실제 chromadb 색인(또는 `_open` monkeypatch).
-3. **라우팅·응답**: `state.py`(Intent·`filing_hits`), analyze 프롬프트·분기(asked 승격 가드), plan, execute, `route_after_execute`, respond(NO_INDEX 대상명·회사명 검증·여러 회사 템플릿), `memory.update_memory`, execute `_summary`. README에 한 줄: "`kind=local`은 데이터 출처가 로컬 색인이라는 뜻(질의 임베딩은 GMS 호출)."
-4. **실데이터·비교**(외부 영향 — 오케스트레이터가 사용자 확인 후): GMS 임베딩 가용 확인 → 기본 8종목 색인 1회 → §10 비교 실행·기록.
+3. **라우팅·응답**: `state.py`(Intent·`filing_hits`), analyze 프롬프트·분기(asked 승격 가드), plan, execute, `route_after_execute`, respond(NO_INDEX 대상명·회사명 검증·여러 회사 템플릿), `memory.update_memory`, execute `_summary`. README에 한 줄: "`kind=local`은 데이터 출처가 로컬 색인이라는 뜻(질의 임베딩도 로컬 해시, 네트워크 없음)."
+4. **실데이터·비교**(외부 영향 — 오케스트레이터가 사용자 확인 후): (D7c로 local-hash-v1 확정) → 기본 8종목 색인 1회 → §10 비교 실행·기록.
 
 ## 12. 테스트 관점 (`tests/test_d17.py`; LLM·임베딩·DART 전부 mock, 네트워크 없음)
 
@@ -236,7 +237,7 @@ class FilingQuery(BaseModel):                         # extra="forbid" 금지(D1
 
 ## 구현 시 확인 항목
 
-- **GMS 임베딩 가용성**(실호출 금지 상태에서 미확인): `/embeddings` 경로·`text-embedding-3-small` 허용 여부·배치 입력 수 한도·응답 형식. 불가하면 `EMBED_MODEL="local-hash-v1"`로 전환(코드 상수 1곳)하고 비교 문서에 명시.
+- **GMS 임베딩 가용성**: 확인 완료(불가) → `EMBED_MODEL="local-hash-v1"`로 전환(D7c). `MIN_SCORE_LOCAL` 실측은 4단계에서.
 - **DART `document.xml`**: 실제 ZIP 구성(본문 파일명, 첨부 포함 여부), 인코딩, 태그 형태(`<P>`, `<TITLE>`, `<TABLE>` 대소문자·속성), 사업보고서 1건 크기·청크 수. 오류 시 본문 형식(JSON/XML). `list.json`의 `pblntf_ty="A"` 필터 동작.
 - **chromadb**: Python 3.10/macOS 설치 확인, 컬렉션 없음 시 예외 타입(버전별 상이 → 넓게 잡고 `NO_INDEX`), 다른 프로세스(스크립트)가 색인을 바꾼 뒤 서버의 클라이언트 캐시 반영 여부 — 비교 절차는 "색인 변경 후 서버 재시작"으로 고정. 첫 import 시간 때문에 `timeout_s=20`이 충분한지.
 - `backend/tools/filing_text.py`가 `backend.agent.llm`을 import할 때 순환 import 여부(`llm`은 `tools.base`만 import하므로 문제없을 것으로 예상).

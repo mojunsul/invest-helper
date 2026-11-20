@@ -94,21 +94,21 @@ def check_dart(key):
 
 
 def check_llm():
-    print("[4] LLM (GMS, OpenAI 호환) — 호출 + Tool 선택")
+    print("[4] LLM (GMS Anthropic) — 호출 + Tool 선택")
     key, base, model = need("GMS_API_KEY"), os.getenv("GMS_BASE_URL"), os.getenv("GMS_MODEL")
     if not (key and base and model):
         print("  GMS_API_KEY / GMS_BASE_URL / GMS_MODEL 필요"); return
-    tool = {"type": "function", "function": {
-        "name": "get_financials", "description": "종목코드로 재무정보를 조회할 때 쓴다",
-        "parameters": {"type": "object", "properties": {"stock_code": {"type": "string"}}, "required": ["stock_code"]}}}
-    r = requests.post(f"{base.rstrip('/')}/chat/completions",
-                      headers={"Authorization": f"Bearer {key}"}, timeout=60,
-                      json={"model": model, "tools": [tool],
+    tool = {"name": "get_financials", "description": "종목코드로 재무정보를 조회할 때 쓴다",
+            "input_schema": {"type": "object", "properties": {"stock_code": {"type": "string"}}, "required": ["stock_code"]}}
+    r = requests.post(f"{base.rstrip('/')}/messages",
+                      headers={"x-api-key": key, "anthropic-version": "2023-06-01"}, timeout=60,
+                      json={"model": model, "max_tokens": 256, "tools": [tool],
                             "messages": [{"role": "user", "content": "005930 종목의 재무정보를 조회해줘"}]})
     print(f"  HTTP {r.status_code}")
     try:
-        msg = r.json()["choices"][0]["message"]
-        print("  tool_calls:", msg.get("tool_calls") or f"(없음) content={str(msg.get('content'))[:80]}")
+        blocks = r.json()["content"]
+        uses = [b for b in blocks if b.get("type") == "tool_use"]
+        print("  tool_use:", uses or f"(없음) content={str(blocks)[:80]}")
     except Exception:
         print("  응답 이상:", r.text[:150])
 
