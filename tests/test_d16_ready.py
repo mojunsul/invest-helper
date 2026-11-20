@@ -175,6 +175,7 @@ def test_uvicorn_command_smoke(tmp_path):
     assert repo_db_state() == before
 
 
+@pytest.mark.real_db
 def test_db_path_is_relative():
     # README의 "저장소 루트에서 실행" 문구와 짝. 바뀌면 README도 함께 갱신
     assert not os.path.isabs(config.DB_PATH)
@@ -224,6 +225,7 @@ def test_terms_exact_resolves_to_self(real_terms):
         assert r["status"] == "ok" and r["prefixes"] == it["prefixes"], (it, r)
 
 
+@pytest.mark.real_db
 @pytest.mark.skipif(os.environ.get("INVEST_REAL_DB") != "1", reason="실DB 점검: INVEST_REAL_DB=1일 때만")
 def test_terms_prefixes_have_listed_companies_real_db(real_terms):
     bad = [(it["term"], it["prefixes"]) for it in _term_items() if resolve._n_listed(it["prefixes"]) < 1]
