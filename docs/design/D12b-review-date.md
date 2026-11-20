@@ -108,3 +108,5 @@
 - 실제 운영 DB(`config.DB_PATH`) 사본으로 서버 기동 → 기존 리포트 목록·상세가 그대로 나오고 `review_date: null`인지.
 - `<input type="date">`의 좁은 화면(모바일 폭) 레이아웃이 `.save-panel`·`.edit-form`에서 깨지지 않는지.
 - Pydantic 2.14.2에서 `pattern`이 `str | None`의 `None`에 적용되지 않는지(기본값 `None` 통과 확인).
+
+> D19(`D19-report-core-values.md`)가 수정 가능 필드를 `target_per`·`target_roe`까지 확장한다. 이 문서 원문은 D19를 참조 기준으로 둔다.

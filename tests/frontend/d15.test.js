@@ -90,3 +90,22 @@ test("REASON_TEXT 9키", () => {
   assert.strictEqual(Object.keys(C.REASON_TEXT).length, 9);
   assert.strictEqual(C.REASON_TEXT.NEGATIVE_EQUITY, "자본잠식");
 });
+
+test("D19 buildPatchBody 기준값", () => {
+  const cur = { name: "A", memo: "", review_date: null, target_per: 10, target_roe: null };
+  assert.deepStrictEqual(R.buildPatchBody(cur, "A", "", "", "12", ""), { body: { target_per: 12 } });
+  assert.deepStrictEqual(R.buildPatchBody(cur, "A", "", "", "", "15.5"), { body: { target_per: null, target_roe: 15.5 } });
+  assert.deepStrictEqual(R.buildPatchBody(cur, "A", "", "", "10", ""), { noop: true });
+  assert.deepStrictEqual(R.buildPatchBody(cur, "A", "", "", "abc", ""), { error: "숫자를 입력하세요." });
+  assert.deepStrictEqual(R.buildPatchBody(cur, "A", "", ""), { noop: true });
+});
+
+test("D19 compareTarget·patchErrText", () => {
+  const m = { values: { PER: 8.2, ROE: 12, PBR: null } };
+  assert.deepStrictEqual(R.compareTarget(m, 10, 15), ["저장 PER 8.20배: 내 상한 이하(충족)", "저장 ROE 12.00%: 내 하한 미만(미충족)"]);
+  assert.match(R.compareTarget(m, 7, null)[0], /초과\(미충족\)/);
+  assert.match(R.compareTarget({ values: {} }, 7, null)[0], /비교 불가/);
+  assert.deepStrictEqual(R.compareTarget(m, null, null), []);
+  assert.match(R.patchErrText({ status: 422, data: { code: "INVALID_REQUEST", message: "m" } }), /^m .*PER 0 초과/);
+  assert.strictEqual(R.patchErrText({ status: 404, data: { code: "REPORT_NOT_FOUND" } }), R.errText({ status: 404, data: { code: "REPORT_NOT_FOUND" } }));
+});

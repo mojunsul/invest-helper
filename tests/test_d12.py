@@ -299,3 +299,56 @@ def test_review_past_ok(client):
 def test_review_not_in_duplicate(client):
     _post(client, review_date="2026-12-01")
     assert _post(client, review_date="2027-01-01").json()["duplicate_of"] == [1]
+
+
+# ---- D19 target_per / target_roe ----
+def test_d19_migration():
+    con = sqlite3.connect(config.DB_PATH)
+    con.execute("DROP TABLE reports")
+    con.execute("CREATE TABLE reports(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, stock_code TEXT NOT NULL, "
+                "stock_name TEXT NOT NULL, base_date TEXT, metrics_json TEXT NOT NULL, industry_avg_json TEXT NOT NULL, "
+                "disclosures_json TEXT, disclaimer TEXT NOT NULL, memo TEXT NOT NULL DEFAULT '', "
+                "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)")
+    con.execute("INSERT INTO reports(name,stock_code,stock_name,base_date,metrics_json,industry_avg_json,disclaimer,memo,"
+                "created_at,updated_at) VALUES('old','005930','삼성전자','2024-12-31','{}','{}','d','m','t','t')")
+    con.commit()
+    con.close()
+    db.init_table()
+    db.init_table()
+    cols = {r[1] for r in sqlite3.connect(config.DB_PATH).execute("PRAGMA table_info(reports)")}
+    assert {"review_date", "target_per", "target_roe"} <= cols
+    r = db.get_report(1)
+    assert r["name"] == "old" and r["target_per"] is None and r["target_roe"] is None
+
+
+def test_d19_patch_targets(client):
+    assert _post(client).status_code == 201
+    before = client.get("/api/reports/1").json()
+    r = client.patch("/api/reports/1", json={"target_per": 10, "target_roe": 15.5})
+    assert r.status_code == 200
+    j = r.json()
+    assert j["target_per"] == 10 and j["target_roe"] == 15.5
+    assert j["metrics"] == before["metrics"] and j["base_date"] == before["base_date"] and j["name"] == before["name"]
+    assert j["updated_at"] >= before["updated_at"]
+    assert client.get("/api/reports").json()[0]["target_per"] == 10
+    # 다른 필드만 보내면 기준값 불변
+    assert client.patch("/api/reports/1", json={"name": "x"}).json()["target_per"] == 10
+    # null = 삭제, 생략 = 유지
+    j = client.patch("/api/reports/1", json={"target_roe": None}).json()
+    assert j["target_roe"] is None and j["target_per"] == 10
+
+
+@pytest.mark.parametrize("body", [
+    {"target_per": 0}, {"target_per": -1}, {"target_per": 5000}, {"target_roe": "abc"}, {"target_per": True},
+    {"target_roe": -101}, {"target_roe": 1001}, {"base_date": "2025"}, {"metrics": {}}, {}, {"name": None},
+    {"target_per; DROP": 1}])
+def test_d19_patch_invalid(client, body):
+    _post(client)
+    r = client.patch("/api/reports/1", json=body)
+    assert r.status_code == 422 and r.json()["code"] == "INVALID_REQUEST"
+    j = client.get("/api/reports/1").json()
+    assert j["target_per"] is None and j["target_roe"] is None
+
+
+def test_d19_post_rejects_targets(client):
+    assert _post(client, target_per=10).status_code == 422

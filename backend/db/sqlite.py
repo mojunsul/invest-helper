@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS reports(
 CREATE INDEX IF NOT EXISTS reports_stock ON reports(stock_code, base_date);
 """
 _COLS = ("id, name, stock_code, stock_name, base_date, metrics_json, industry_avg_json, "
-         "disclosures_json, disclaimer, memo, created_at, updated_at, review_date")
+         "disclosures_json, disclaimer, memo, created_at, updated_at, review_date, target_per, target_roe")
 
 
 def _connect() -> sqlite3.Connection:
@@ -35,7 +35,8 @@ def _now() -> str:
 
 def _summary(r: tuple) -> dict:
     return {"id": r[0], "name": r[1], "stock_code": r[2], "stock_name": r[3], "base_date": r[4],
-            "created_at": r[10], "updated_at": r[11], "review_date": r[12]}
+            "created_at": r[10], "updated_at": r[11], "review_date": r[12],
+            "target_per": r[13], "target_roe": r[14]}
 
 
 def _report(r: tuple) -> dict:
@@ -48,8 +49,10 @@ def init_table() -> None:
     try:
         with con:
             con.executescript(_DDL)
-            if "review_date" not in {r[1] for r in con.execute("PRAGMA table_info(reports)")}:
-                con.execute("ALTER TABLE reports ADD COLUMN review_date TEXT")  # 기존 DB 마이그레이션, 기존 행은 NULL
+            have = {r[1] for r in con.execute("PRAGMA table_info(reports)")}
+            for col, typ in (("review_date", "TEXT"), ("target_per", "REAL"), ("target_roe", "REAL")):
+                if col not in have:
+                    con.execute(f"ALTER TABLE reports ADD COLUMN {col} {typ}")  # col·typ는 코드 상수, 기존 행 NULL
     finally:
         con.close()
 
@@ -94,8 +97,8 @@ def get_report(report_id: int) -> dict | None:
 
 
 def update_report(report_id: int, name: str | None, memo: str | None,
-                  review_date: str | None = None) -> dict | None:
-    # 컬럼은 name/memo/review_date 고정 화이트리스트만 사용, 값은 전부 ? 바인딩
+                  review_date: str | None = None, targets: dict | None = None) -> dict | None:
+    # 컬럼은 name/memo/review_date/target_* 고정 화이트리스트만 사용, 값은 전부 ? 바인딩
     sets, args = ["updated_at=?"], [_now()]
     if name is not None:
         sets.append("name=?")
@@ -106,6 +109,10 @@ def update_report(report_id: int, name: str | None, memo: str | None,
     if review_date is not None:
         sets.append("review_date=?")
         args.append(review_date or None)  # "" -> NULL
+    for k in ("target_per", "target_roe"):
+        if targets and k in targets:
+            sets.append(f"{k}=?")
+            args.append(targets[k])  # None -> NULL(삭제)
     with _write_lock:
         con = _connect()
         try:

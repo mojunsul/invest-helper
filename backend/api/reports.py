@@ -80,9 +80,21 @@ class CreateBody(_Edit):
 
 
 class PatchBody(_Edit):
+    # 명시적 null = 삭제, 키 생략 = 변경 없음(model_fields_set)
+    target_per: float | None = Field(default=None, gt=0, le=1000, allow_inf_nan=False)
+    target_roe: float | None = Field(default=None, ge=-100, le=1000, allow_inf_nan=False)
+
+    @field_validator("target_per", "target_roe", mode="before")
+    @classmethod
+    def _nobool(cls, v):
+        if isinstance(v, bool):
+            raise ValueError("bool")
+        return v
+
     @model_validator(mode="after")
     def _any(self):
-        if self.name is None and self.memo is None and self.review_date is None:
+        if (self.name is None and self.memo is None and self.review_date is None
+                and not {"target_per", "target_roe"} & self.model_fields_set):
             raise ValueError("empty")
         return self
 
@@ -111,7 +123,8 @@ def create(body: CreateBody):
 
 @router.patch("/{report_id}")
 def patch(body: PatchBody, report_id: int = _Id):
-    r = sqlite.update_report(report_id, body.name, body.memo, body.review_date)
+    targets = {k: getattr(body, k) for k in ("target_per", "target_roe") if k in body.model_fields_set}
+    r = sqlite.update_report(report_id, body.name, body.memo, body.review_date, targets)
     if r is None:
         raise ApiError(404, "REPORT_NOT_FOUND")
     return r

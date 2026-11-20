@@ -51,7 +51,7 @@
     return Number.isSafeInteger(n) && n >= 1 ? n : null;
   }
 
-  function buildPatchBody(cur, name, memo, review) {
+  function buildPatchBody(cur, name, memo, review, per, roe) {
     var n = String(name == null ? "" : name).trim();
     if (!n) return { error: "이름은 비울 수 없습니다." };
     var m = String(memo == null ? "" : memo);
@@ -61,6 +61,15 @@
     if (n !== c.name) body.name = n;
     if (m !== (c.memo == null ? "" : c.memo)) body.memo = m;
     if (r !== (c.review_date || "")) body.review_date = r;
+    var bad = false;
+    [["target_per", per], ["target_roe", roe]].forEach(function (t) {
+      if (t[1] === undefined) return;  // 인자 생략 = 변경 없음
+      var s = String(t[1] == null ? "" : t[1]).trim(), curV = isNum(c[t[0]]) ? c[t[0]] : null, v;
+      if (s === "") v = null;
+      else { v = Number(s); if (!isFinite(v)) { bad = true; return; } }
+      if (v !== curV) body[t[0]] = v;
+    });
+    if (bad) return { error: "숫자를 입력하세요." };
     return Object.keys(body).length ? { body: body } : { noop: true };
   }
 
@@ -69,6 +78,36 @@
     if ((r && r.status === 0) || d.code === "NETWORK_ERROR") return "서버에 연결하지 못했습니다.";
     if (d.code === "REPORT_NOT_FOUND") return NOT_FOUND;
     return typeof d.message === "string" && d.message ? d.message : "요청에 실패했습니다.";
+  }
+
+  var RANGE_NOTE = " (기준값 범위: PER 0 초과~1000, ROE -100~1000)";
+  function patchErrText(r) {
+    var t = errText(r);
+    return r && isObj(r.data) && r.data.code === "INVALID_REQUEST" ? t + RANGE_NOTE : t;
+  }
+
+  function fmtNum(v) { return String(v); }  // 10.0 -> "10", 12.5 -> "12.5"
+
+  function targetText(per, roe) {
+    var a = [];
+    if (isNum(per)) a.push("PER≤" + fmtNum(per));
+    if (isNum(roe)) a.push("ROE≥" + fmtNum(roe));
+    return a.join(" ");
+  }
+
+  // 표시용 비교. 저장 지표는 변형하지 않는다(ROE는 저장값과 같은 % 단위).
+  function compareTarget(metrics, per, roe) {
+    var vals = isObj(metrics) && isObj(metrics.values) ? metrics.values : {};
+    var out = [];
+    if (isNum(per)) {
+      out.push(isNum(vals.PER) ? "저장 PER " + vals.PER.toFixed(2) + "배: 내 상한 " + (vals.PER <= per ? "이하(충족)" : "초과(미충족)")
+                               : "PER: 비교 불가(저장 지표 없음)");
+    }
+    if (isNum(roe)) {
+      out.push(isNum(vals.ROE) ? "저장 ROE " + vals.ROE.toFixed(2) + "%: 내 하한 " + (vals.ROE >= roe ? "이상(충족)" : "미만(미충족)")
+                               : "ROE: 비교 불가(저장 지표 없음)");
+    }
+    return out;
   }
 
   function fmtDateTime(iso) {
@@ -140,7 +179,8 @@
         li.appendChild(open);
         li.appendChild(document.createTextNode(" " + str(x.stock_name) + "(" + str(x.stock_code) + ") · 기준일 " +
           (typeof x.base_date === "string" && x.base_date ? x.base_date : "-") + " · 저장 " + fmtDateTime(x.created_at) +
-          (typeof x.review_date === "string" && x.review_date ? " · 재검토 " + x.review_date : "") + " "));
+          (typeof x.review_date === "string" && x.review_date ? " · 재검토 " + x.review_date : "") +
+          (targetText(x.target_per, x.target_roe) ? " · 내 기준 " + targetText(x.target_per, x.target_roe) : "") + " "));
         li.appendChild(deleteControl(id, function () {
           li.remove();
           if (!listEl.children.length) setEmpty(true);
@@ -187,11 +227,11 @@
       return box;
     }
 
-    var EDIT_NOTE = "이름·메모·재검토 예정일만 수정할 수 있습니다. 지표·기준일은 분석 당시 조회한 근거라 수정할 수 없습니다. 바꾸려면 채팅에서 다시 분석해 새로 저장하세요.";
+    var EDIT_NOTE = "이름·메모·재검토 예정일·내 기준값(PER 상한, ROE 하한)만 수정할 수 있습니다. 지표·기준일은 분석 당시 조회한 근거라 수정할 수 없습니다. 바꾸려면 채팅에서 다시 분석해 새로 저장하세요.";
 
     function editBlock(rep) {
       var box = el("div");
-      var btn = el("button", { text: "이름·메모·재검토일 수정", attrs: { type: "button" } });
+      var btn = el("button", { text: "이름·메모·재검토일·내 기준 수정", attrs: { type: "button" } });
       btn.addEventListener("click", function () {
         btn.hidden = true;
         var ni = el("input", { attrs: { type: "text", id: "edit-name", maxlength: "100" } });
@@ -200,23 +240,29 @@
         mi.value = str(rep.memo);
         var ri = el("input", { attrs: { type: "date", id: "edit-review" } });
         ri.value = rep.review_date || "";
+        var pi = el("input", { attrs: { type: "number", step: "any", id: "edit-per" } });
+        pi.value = isNum(rep.target_per) ? fmtNum(rep.target_per) : "";
+        var oi = el("input", { attrs: { type: "number", step: "any", id: "edit-roe" } });
+        oi.value = isNum(rep.target_roe) ? fmtNum(rep.target_roe) : "";
         var save = el("button", { text: "저장", attrs: { type: "submit" } });
         var cancel = el("button", { text: "취소", attrs: { type: "button" } });
         var form = el("form", { class: "edit-form" }, [
           el("label", { text: "이름", attrs: { for: "edit-name" } }), ni,
           el("label", { text: "메모", attrs: { for: "edit-memo" } }), mi,
           el("label", { text: "재검토 예정일", attrs: { for: "edit-review" } }), ri,
+          el("label", { text: "내 PER 상한", attrs: { for: "edit-per" } }), pi,
+          el("label", { text: "내 ROE 하한(%)", attrs: { for: "edit-roe" } }), oi,
           el("p", { class: "hint", text: EDIT_NOTE }), save, cancel]);
         cancel.addEventListener("click", function () { form.remove(); btn.hidden = false; btn.focus(); });
         form.addEventListener("submit", async function (e) {
           e.preventDefault();
-          var b = buildPatchBody(rep, ni.value, mi.value, ri.value);
+          var b = buildPatchBody(rep, ni.value, mi.value, ri.value, pi.value, oi.value);
           if (b.error) { showMsg(b.error); return; }
           if (b.noop) { showMsg("변경 사항이 없습니다."); return; }
           save.disabled = cancel.disabled = true;
           var r = await C.api("PATCH", "/api/reports/" + rep.id, b.body);
           if (r.ok && isObj(r.data)) { renderDetail(r.data); showMsg("수정했습니다."); }
-          else { showMsg(errText(r)); save.disabled = cancel.disabled = false; }
+          else { showMsg(patchErrText(r)); save.disabled = cancel.disabled = false; }
         });
         box.appendChild(form);
         ni.focus();
@@ -236,6 +282,10 @@
       var times = "저장 " + fmtDateTime(rep.created_at);
       if (rep.updated_at && rep.updated_at !== rep.created_at) times += " · 수정 " + fmtDateTime(rep.updated_at);
       d(p("재검토 예정일 " + (rep.review_date || "-")));
+      var tg = targetText(rep.target_per, rep.target_roe);
+      d(p("내 기준 " + (tg ? (isNum(rep.target_per) ? "PER ≤ " + fmtNum(rep.target_per) + "배" : "PER -") + " / " +
+        (isNum(rep.target_roe) ? "ROE ≥ " + fmtNum(rep.target_roe) + "%" : "ROE -") : "-")));
+      compareTarget(mt, rep.target_per, rep.target_roe).forEach(function (t) { d(p(t)); });
       d(p(times));
       d(metricTable(rep));
       d(p("재무 기준: " + (typeof mt.fiscal_period === "string" && mt.fiscal_period ? mt.fiscal_period : "-") + (mt.estimated === true ? " *" : "")));
@@ -269,7 +319,7 @@
   }
 
   var exported = { fmtMetric: fmtMetric, metricCell: metricCell, avgCell: avgCell, disclosureView: disclosureView,
-                   parseHashId: parseHashId, buildPatchBody: buildPatchBody, errText: errText, fmtDateTime: fmtDateTime };
+                   parseHashId: parseHashId, buildPatchBody: buildPatchBody, errText: errText, patchErrText: patchErrText, compareTarget: compareTarget, fmtDateTime: fmtDateTime };
   if (typeof module !== "undefined") module.exports = exported;
   if (typeof document !== "undefined") init();
 })();
