@@ -240,11 +240,8 @@
       unit: "%", def: 100, min: 0, max: 1000, step: 10, fmt: function (v) { return "부채비율 " + v + "% 이하"; } }
   ];
 
-  // picks: [{id, value}] (체크된 칩, UI 순서). 반환 {ok:true,text} | {ok:false,msg,field?}
-  function buildQuery(industry, picks) {
-    if (INDUSTRIES.indexOf(industry) < 0) return { ok: false, msg: "산업을 선택하세요.", field: "cf-industry" };
-    picks = arr(picks);
-    if (!picks.length) return { ok: false, msg: "조건을 하나 이상 선택하세요." };
+  // 칩 검증+문장 조각. 반환 {ok:true,parts} | {ok:false,msg,field?}
+  function condParts(picks) {
     var parts = [];
     for (var i = 0; i < picks.length; i++) {
       var p = picks[i], d = COND_DEFS.filter(function (x) { return x.id === p.id; })[0];
@@ -255,10 +252,39 @@
         return { ok: false, msg: d.label + " 기준값은 " + d.min + "~" + d.max + " 사이 숫자로 입력하세요.", field: p.id };
       parts.push(d.fmt(String(v)));
     }
-    return { ok: true, text: industry + " 중 " + parts.join(", ") + "인 종목 찾아줘" };
+    return { ok: true, parts: parts };
   }
 
-  var exported = { COND_DEFS: COND_DEFS, INDUSTRIES: INDUSTRIES, buildQuery: buildQuery, HISTORY_KEY: HISTORY_KEY, HISTORY_MAX: HISTORY_MAX, HISTORY_MAX_LEN: HISTORY_MAX_LEN,
+  // picks: [{id, value}] (체크된 칩, UI 순서). 반환 {ok:true,text} | {ok:false,msg,field?}
+  function buildQuery(industry, picks) {
+    if (INDUSTRIES.indexOf(industry) < 0) return { ok: false, msg: "산업을 선택하세요.", field: "cf-industry" };
+    picks = arr(picks);
+    if (!picks.length) return { ok: false, msg: "조건을 하나 이상 선택하세요." };
+    var r = condParts(picks);
+    if (!r.ok) return r;
+    return { ok: true, text: industry + " 중 " + r.parts.join(", ") + "인 종목 찾아줘" };
+  }
+
+  // 채팅 입력 + 폼 선택 병합. 반환 {ok:true,text,applied} | {ok:false,msg,field?}
+  function mergeQuery(industry, picks, text) {
+    picks = arr(picks);
+    var hasInd = INDUSTRIES.indexOf(industry) >= 0, out;
+    if (!hasInd && !picks.length) return { ok: true, text: text, applied: false };
+    if (hasInd && picks.length) {
+      var b = buildQuery(industry, picks);
+      if (!b.ok) return b;
+      out = b.text + " " + text;
+    } else if (hasInd) out = industry + " 중 " + text;
+    else {
+      var c = condParts(picks);
+      if (!c.ok) return c;
+      out = c.parts.join(", ") + " 조건. " + text;
+    }
+    if (out.length > 2000) return { ok: false, msg: "선택한 조건과 입력을 합치면 너무 깁니다. 입력을 줄여 주세요." };
+    return { ok: true, text: out, applied: true };
+  }
+
+  var exported = { COND_DEFS: COND_DEFS, INDUSTRIES: INDUSTRIES, buildQuery: buildQuery, mergeQuery: mergeQuery, HISTORY_KEY: HISTORY_KEY, HISTORY_MAX: HISTORY_MAX, HISTORY_MAX_LEN: HISTORY_MAX_LEN,
                    parseHistory: parseHistory, pushHistory: pushHistory, SESSION_KEY: SESSION_KEY, UUID_RE: UUID_RE, uuidV4: uuidV4, getSessionId: getSessionId,
                    timelineRows: timelineRows, buildSaveBody: buildSaveBody, INTENT_TEXT: INTENT_TEXT, METRICS: METRICS,
                    METRIC_LABEL: METRIC_LABEL, fmtMetric: fmtMetric, condChips: condChips, groupVerdicts: groupVerdicts,
@@ -271,7 +297,7 @@
     var log = $("log"), status = $("status"), banner = $("banner"), form = $("form"), empty = $("empty"),
         msg = $("msg"), send = $("send"), newChat = $("new-chat"), disc = $("disclaimer"),
         chipsEl = $("chips"), tl = $("timeline"), sideSum = $("side-sum"), sidePanel = $("side-panel"), side = $("side"),
-        cfForm = $("cf-form"), cf = $("cf"), cfIndustry = $("cf-industry"), cfChips = $("cf-chips"), cfGo = $("cf-go"), cfErr = $("cf-err");
+        cfForm = $("cf-form"), cf = $("cf"), cfIndustry = $("cf-industry"), cfChips = $("cf-chips"), cfGo = $("cf-go"), cfErr = $("cf-err"), cfNote = $("cf-note");
     var store = { get: C.storageGet, set: C.storageSet };
     var sid = getSessionId(store), busy = false, seq = 0;
     function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
@@ -504,6 +530,18 @@
       var fromForm = typeof textArg === "string", back = fromForm ? cfGo : msg;
       var text = (fromForm ? textArg : msg.value).trim();
       if (!text || busy) return;
+      // 폼이 열려 있고 선택이 있으면 병합. 조건 칩 prefill("산업을 " 등)로 시작하는 입력은 변경 문장이라 병합 안 함
+      if (!fromForm && cf.open && !/^(산업|시장|기준일)을 /.test(text)) {
+        var m = mergeQuery(cfIndustry.value, collectPicks(), text);
+        if (!m.ok) {
+          cfErr.textContent = m.msg; cfErr.hidden = false; cf.open = true;
+          var f = m.field && (m.field.indexOf("cf-") === 0 ? $(m.field) : $("cf-" + m.field + "-v"));
+          if (f) f.focus();
+          return;
+        }
+        cfErr.hidden = true; text = m.text;
+      }
+      var wasOpen = cf.open;
       setBusy(true);
       cf.open = false;  // 전송 시 닫힘(수동 재열림 가능). 로드 시엔 html open 속성으로 항상 열림
       var tmp = pendingCard(text);
@@ -531,10 +569,12 @@
       if (r.status === 409 || r.status === 422) {
         tmp.remove(); syncEmpty();
         status.textContent = r.status === 409 ? BUSY_TEXT : r.data.message;  // setBusy(false) 이후에 써야 남는다
+        cf.open = wasOpen;
       } else {
         var errCard = renderCard({ status: "error", answer: r.data.message }, text);
         tmp.replaceWith(errCard);
         status.textContent = statusLine({ status: "error" });
+        cf.open = wasOpen;
       }
       back.focus();
     }
@@ -556,12 +596,27 @@
         cfChips.appendChild(row);
       });
     }
+    function collectPicks() {
+      return COND_DEFS.filter(function (d) { return $("cf-" + d.id).checked; }).map(function (d) {
+        return { id: d.id, value: d.fixed ? null : $("cf-" + d.id + "-v").value };
+      });
+    }
+    // 폼이 열려 있고 선택이 있을 때만 표시(문구는 값 검증과 무관한 label 목록)
+    function updateNote() {
+      var names = COND_DEFS.filter(function (d) { return $("cf-" + d.id).checked; }).map(function (d) { return d.label; });
+      var ind = INDUSTRIES.indexOf(cfIndustry.value) >= 0 ? cfIndustry.value : "";
+      var items = (ind ? [ind] : []).concat(names);
+      cfNote.hidden = !(cf.open && items.length);
+      if (cfNote.hidden) return;
+      cfNote.textContent = "선택한 " + (names.length ? "조건" : "산업") + "(" + items.join(" · ") +
+        ")이 아래 입력창에 쓴 내용과 함께 전송됩니다. (입력 없이 보내려면 ‘찾기’)";
+    }
+    cfForm.addEventListener("change", updateNote);
+    cf.addEventListener("toggle", updateNote);
     cfForm.addEventListener("submit", function (e) {
       e.preventDefault();
       cfErr.hidden = true;
-      var picks = COND_DEFS.filter(function (d) { return $("cf-" + d.id).checked; }).map(function (d) {
-        return { id: d.id, value: d.fixed ? null : $("cf-" + d.id + "-v").value };
-      });
+      var picks = collectPicks();
       var r = buildQuery(cfIndustry.value, picks);
       if (r.ok) { submit(r.text); return; }
       cfErr.textContent = r.msg; cfErr.hidden = false;
@@ -595,6 +650,7 @@
     } else renderChips(null);
     syncEmpty();
     renderCondForm();
+    updateNote();
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", init);
