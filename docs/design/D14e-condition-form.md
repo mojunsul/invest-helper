@@ -27,7 +27,7 @@
 
 ## 4. UI 구성
 
-위치: `<header>` 아래, 기존 `<form id="form" class="search">` **위**에 별도 `<form id="cf-form" class="search cf">`(중첩 폼 금지; 숫자 입력에서 Enter = 찾기, 채팅 textarea와 간섭 없음). 내부는 `<details id="cf">` + `<summary>조건으로 찾기 (용어 몰라도 OK)</summary>`.
+위치: `<header>` 아래, 기존 `<form id="form" class="search">` **위**에 별도 `<form id="cf-form" class="search cf">`(중첩 폼 금지; 숫자 입력에서 Enter = 찾기, 채팅 textarea와 간섭 없음). 내부는 `<details id="cf">` + `<summary>조건으로 찾기</summary>(`<details id="cf" open>`: 로드 시 항상 열림)`.
 
 구성(위→아래):
 
@@ -113,7 +113,7 @@ buildQuery(industry, picks):
 |---|---|
 | `frontend/index.html` | `<form id="form" class="search">` 앞에 `<form id="cf-form" class="search cf">…<details id="cf">`(§4) 추가. 칩·옵션 DOM은 JS가 `COND_DEFS`/`INDUSTRIES`로 채우므로 HTML은 컨테이너(`#cf-industry`, `#cf-chips`, `#cf-go`, `#cf-err`)만. 정적 규칙(D14 §11: 인라인 스크립트 금지) 유지. `#help` 문구는 변경 없음 |
 | `frontend/chat.js` 순수 영역 | `COND_DEFS`, `INDUSTRIES`, `buildQuery` 추가, `exported`에 `COND_DEFS, INDUSTRIES, buildQuery` 추가 |
-| `frontend/chat.js` `init()` | ① `cf` 관련 요소 조회 ② `renderCondForm()`: select 옵션·칩 행 생성, 체크박스 `change` → 값 입력 `disabled` 토글 ③ `cf-form` `submit` 핸들러: `buildQuery` 결과가 `ok`면 `submit(r.text)`, 아니면 `#cf-err` 표시·포커스 ④ `cf.open = hist.length === 0` ⑤ `setBusy`에 `#cf-form`의 `button, input, select` `disabled = b` 추가 |
+| `frontend/chat.js` `init()` | ① `cf` 관련 요소 조회 ② `renderCondForm()`: select 옵션·칩 행 생성, 체크박스 `change` → 값 입력 `disabled` 토글 ③ `cf-form` `submit` 핸들러: `buildQuery` 결과가 `ok`면 `submit(r.text)`, 아니면 `#cf-err` 표시·포커스 ④ `submit()`에서 `setBusy(true)` 직후 `cf.open = false`(폼·채팅 어느 쪽 전송이든 닫힘, 수동 재열림 가능; 로드 시엔 항상 열림이며 기록 유무와 무관) ⑤ `setBusy`에 `#cf-form`의 `button, input, select` `disabled = b` 추가 |
 | `frontend/chat.js` `submit()` | 시그니처 `submit(textArg)`. `text = (typeof textArg === "string" ? textArg : msg.value).trim()`. 성공 분기의 `msg.value = ""`는 **인자 없이 호출된 경우(채팅 입력)에만** 실행. 나머지(카드 생성·`pushHistory`·타임라인·칩)는 동일 경로. 기존 호출부(`submit()`)는 동작 불변 |
 | `frontend/style.css` | `.cf`·`#cf summary`·`.cf-chip`(알약, 체크 상태)·`.cf-row`(칩+값+설명 줄바꿈 flex)·`#cf-go`(primary) 추가. 기존 토큰(`--surface-2`, `--accent`, `--info-bg`, `--line`, `--radius-sm`)만 사용, 다크 모드는 토큰이 처리. `@media (max-width:600px)`에서 `.cf-row`를 세로 정렬, 좌우 패딩은 기존 `form.search` 규칙 공유 |
 | 변경 없음 | `common.js`, `reports.*`, 백엔드 전부, D14d `HISTORY_KEY` 로직(질문 문자열이 문장이면 그대로 저장) |

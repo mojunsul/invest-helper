@@ -58,11 +58,14 @@ test("폼 DOM: 초안 보존·setBusy", async (t) => {
   w.eval(fs.readFileSync(path.join(__dirname, "../../frontend/chat.js"), "utf8"));
   w.document.dispatchEvent(new w.Event("DOMContentLoaded"));
   const d = w.document, $ = (i) => d.getElementById(i);
+  assert.strictEqual($("cf").open, true);  // 로드 시 열림
+  assert.ok(!/용어 몰라도/.test($("cf").textContent));
   $("msg").value = "초안";
   $("cf-industry").value = "게임"; $("cf-roe").checked = true; $("cf-roe").dispatchEvent(new w.Event("change"));
   $("cf-form").dispatchEvent(new w.Event("submit", { cancelable: true }));
   assert.strictEqual($("msg").value, "초안");
   assert.ok($("cf-go").disabled && $("cf-industry").disabled && $("cf-roe-v").disabled);
+  assert.strictEqual($("cf").open, false);  // 전송 시 닫힘
   resolve({ ok: true, status: 200, json: async () => ({ status: "answered", answer: "x", intent: "chitchat" }) });
   await new Promise((r) => setTimeout(r, 20));
   assert.strictEqual($("msg").value, "초안");

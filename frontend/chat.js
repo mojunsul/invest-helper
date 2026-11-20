@@ -505,6 +505,7 @@
       var text = (fromForm ? textArg : msg.value).trim();
       if (!text || busy) return;
       setBusy(true);
+      cf.open = false;  // 전송 시 닫힘(수동 재열림 가능). 로드 시엔 html open 속성으로 항상 열림
       var tmp = pendingCard(text);
       log.insertBefore(tmp, log.firstChild); syncEmpty();
       var r = await C.api("POST", "/api/chat", { session_id: sid, message: text });
@@ -554,7 +555,6 @@
         row.appendChild(el("span", { class: "hint", text: d.desc, attrs: { id: "cf-" + d.id + "-d" } }));
         cfChips.appendChild(row);
       });
-      cf.open = hist.length === 0;
     }
     cfForm.addEventListener("submit", function (e) {
       e.preventDefault();
