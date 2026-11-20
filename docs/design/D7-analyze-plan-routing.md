@@ -212,3 +212,7 @@ def route_after_analyze(state) -> Literal["plan","respond"]:
 
 - 1회차: 최초 설계.
 - 2회차(B안, 사용자 승인): 템플릿 step 전부 삭제(plan은 Tool 입력 스키마를 만족하는 step만 생성: screen/refine=candidates 1개, lookup=financials 1개), 요청 1(PlanStep 템플릿 허용) 철회로 D0 수정 요청 감소, §5-3 D8 위임 사항 추가(후보별 전개·report_save/lookup 종목 변환), §10 요청 6(D1 문구 정정)·7(D8 위임) 추가.
+
+
+## D2e 갱신
+- 프롬프트: `industry`는 겹치면 가장 구체적인 주제 표현, 산업 인식 방식 언급만 있으면 null. `general_knowledge`(일반지식 요청 명시 시 true; asked 직후 요청은 screen/refine) 키 추가. 상세는 `D2e-industry-llm-fallback.md`.

@@ -154,6 +154,39 @@ def select_by_industry(prefixes: list[str]) -> list[IndustryStock]:
     return [{"stock_code": a, "name": b, "induty_code": d} for a, b, d in rows]
 
 
+def match_names(names: list[str]) -> list[StockRef]:
+    """D2e: 정확 일치(별칭 포함) 1종목만 채택. 접두·포함 매칭 금지(환각 흡수 방지)."""
+    _require_cache()
+    out: dict[str, StockRef] = {}
+    for name in names:
+        n = norm_name(name)
+        n = _ALIASES.get(n, n)
+        if not n:
+            continue
+        m = _match(n, False)
+        if m.status == "ok":
+            out.setdefault(m.matches[0].stock_code, m.matches[0])
+    return list(out.values())
+
+
+def select_by_codes(codes: list[str]) -> list[IndustryStock]:
+    _require_cache()
+    if not isinstance(codes, (list, tuple)) or not codes or not all(isinstance(c, str) for c in codes):
+        raise IdentityError("INVALID_INPUT")
+    rows = store.read("SELECT stock_code, name, induty_code FROM company WHERE listed=1 AND detail_status='ok' "
+                      f"AND stock_code IN ({','.join('?' * len(codes))}) ORDER BY stock_code", tuple(codes))
+    return [{"stock_code": a, "name": b, "induty_code": d} for a, b, d in rows]
+
+
+def suggest_industries(text: str, k: int = 3) -> list[str]:
+    """D2e: 사전 term과 2글자 조각이 겹치는 가까운 산업 제안(없으면 [])."""
+    def bg(s):
+        return {s[i:i + 2] for i in range(len(s) - 1)}
+    q = bg(_norm_term(text))
+    scored = [(len(q & bg(t[0])), t[1]) for t in _terms()]
+    return [t for c, t in sorted((x for x in scored if x[0] > 0), key=lambda x: (-x[0], x[1]))[:k]]
+
+
 def similar_industries(text: str) -> list[str]:
     r = resolve_industry(text)
     if r["status"] != "ok":

@@ -11,7 +11,7 @@ from backend.agent.constraints import is_sample_short
 from backend.config import settings
 from backend.events import bus
 from backend.events.bus import Final, LlmDecision, StageEnd, StageStart
-from backend.identity.resolve import cache_status, resolve_stock
+from backend.identity.resolve import cache_status, resolve_industry, resolve_stock
 from backend.tools.financials import NO_FIN_FINANCIAL
 
 logger = logging.getLogger(__name__)
@@ -320,6 +320,19 @@ async def _not_built() -> str | None:
     return None
 
 
+async def _theme_notice(state) -> str | None:
+    ind = state["conditions"].get("industry")
+    try:
+        r = await asyncio.to_thread(resolve_industry, ind) if ind else None
+    except Exception:
+        return None
+    if r is None or r["status"] != "unknown":
+        return None
+    n = len(state.get("candidates") or [])
+    return (f"※ ‘{ind}’은(는) 산업 분류(KSIC)에 없어 AI의 일반 지식으로 고른 후보입니다"
+            f"(DB에서 확인된 국내 상장사 {n}곳). 공시로 검증된 분류가 아니니 사업 내용은 공시에서 확인하세요.")
+
+
 async def _screen(state, status, out) -> str:
     sid, cond = state["session_id"], state["conditions"]
     p, f, u = _counts(state)
@@ -337,6 +350,8 @@ async def _screen(state, status, out) -> str:
             tpl = f"‘{cond.get('industry')}’ 후보 {n}개 중 조건을 충족한 종목이 없습니다(재계획 {r}회, {reason})."
         lines += [await _summary(sid, facts, tpl), ""]
     lines.append(_cond_line(state))
+    if status in ("answered", "limit") and n and (note := await _theme_notice(state)):
+        lines.append(note)
     lines += [x for x in (_basis_line(state), _avg_line(state)) if x]
     lines += _replan_lines(state)
     codes = _passed(state)

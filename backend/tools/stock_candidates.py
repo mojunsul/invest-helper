@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 
 from backend.config import settings
 from backend.identity.models import IdentityError
-from backend.identity.resolve import resolve_industry, select_by_industry
+from backend.identity import theme
+from backend.identity.resolve import resolve_industry, select_by_codes, select_by_industry
 from backend.tools.base import ToolFailure, fail, ok, register, throttle
 
 logger = logging.getLogger(__name__)
@@ -86,12 +87,15 @@ async def _resolve_prefixes(text: str) -> list[str]:
           description="사용자가 산업·시장으로 종목을 찾아야 할 때, 비교 대상 후보 목록을 얻는다",
           input_model=CandidateInput, requires_keys=("DATA_GO_KR_KEY",), timeout_s=30)
 async def find_stock_candidates(inp: CandidateInput):
-    prefixes = await _resolve_prefixes(inp.industry)
-    for e in inp.extra_industries or []:
-        prefixes += await _resolve_prefixes(e)
-    prefixes = list(dict.fromkeys(prefixes))
+    r = await asyncio.to_thread(resolve_industry, inp.industry)
     try:
-        stocks = await asyncio.to_thread(select_by_industry, prefixes)
+        if r["status"] == "unknown" and (codes := theme.cached_codes(inp.industry)):
+            stocks = await asyncio.to_thread(select_by_codes, codes)  # D2e: 일반지식 풀(extra_industries 무시)
+        else:
+            prefixes = await _resolve_prefixes(inp.industry)
+            for e in inp.extra_industries or []:
+                prefixes += await _resolve_prefixes(e)
+            stocks = await asyncio.to_thread(select_by_industry, list(dict.fromkeys(prefixes)))
     except IdentityError as e:
         raise ToolFailure(e.code, e.message) from None
     if not stocks:

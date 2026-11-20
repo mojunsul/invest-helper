@@ -34,7 +34,7 @@ class CandidateInput(BaseModel):           # extra="forbid" 금지(D1)
 ## 4. 처리 순서
 
 1. 입력 검증은 D1 래퍼(INVALID_INPUT).
-2. **산업 해석**: `r = resolve_industry(industry)`(동기·DB, `asyncio.to_thread`). `ok` → `prefixes=r.prefixes`. `unknown` → `INVALID_INPUT`("산업을 해석할 수 없습니다."). `ambiguous` → `INVALID_INPUT`(message에 `options[].term` 나열, 추측 안 함). D2 §5-4 권고 채택(NO_RESULT는 재계획만 낭비). 결과: D0 규칙 2에 따라 error — 되묻기 개선은 요청 1.
+2. **산업 해석**: `r = resolve_industry(industry)`(동기·DB, `asyncio.to_thread`). `ok` → `prefixes=r.prefixes`. `unknown` → `INVALID_INPUT`("산업을 해석할 수 없습니다."). 단, `theme.cached_codes`가 있으면 그 종목 풀 사용(D2e). `ambiguous` → `INVALID_INPUT`(message에 `options[].term` 나열, 추측 안 함). D2 §5-4 권고 채택(NO_RESULT는 재계획만 낭비). 결과: D0 규칙 2에 따라 error — 되묻기 개선은 요청 1.
 3. **extra_industries**: 각 원소를 `resolve_industry`로 재해석(숫자 2~5자리는 D2 §5-2로 그대로 `ok`). `ok`가 아닌 원소가 있으면 `INVALID_INPUT`. `prefixes = unique(primary + extras)`.
 4. **산업 종목 조회**: `select_by_industry(prefixes)` → `[{stock_code,name,induty_code}]`. `IdentityError`는 `ToolFailure(e.code, e.message)`로 1:1 변환(D2 §3). 결과 `[]`이면 `NO_RESULT`.
 5. **주가 일치 조회**: `basDt` 결정·전체 페이지 수집(§5). `srtnCd ∈ 산업 종목 집합`인 행만 남기고 `srtnCd` 기준 dedupe.

@@ -57,6 +57,11 @@ def env(monkeypatch):
         return {"status": "ok", "prefixes": ["261"], "label": t, "options": []}
 
     monkeypatch.setattr(an, "resolve_industry", res)
+
+    async def no_theme(text):
+        return [], 0, False
+
+    monkeypatch.setattr(an.theme, "ensure", no_theme)  # D2e 기본: 일반지식 0건
     events = []
     bus.subscribe(events.append)
     yield calls, queue, ind, events
@@ -214,7 +219,7 @@ def test_stock_name_only_continues(env, intent):
 
 
 # ---------- 산업 해석 ----------
-@pytest.mark.parametrize("t,frag", [("모호", "a, b"), ("???", "인식하지 못했습니다")])
+@pytest.mark.parametrize("t,frag", [("모호", "a, b"), ("???", "일반 지식으로도")])
 def test_industry_unresolved_asks(env, t, frag):
     r = go(env, OUT(industry=t, constraints=[{"metric": "ROE", "value": 10}]),
            conditions=cond(industry="반도체"), prev_intent="screen", last_status="asked")

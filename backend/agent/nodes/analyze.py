@@ -11,7 +11,8 @@ from backend.agent import llm
 from backend.agent.state import Conditions, Constraint, ErrorRecord, Intent, Market, Metric
 from backend.events import bus
 from backend.events.bus import LlmDecision, StageEnd, StageStart
-from backend.identity.resolve import resolve_industry
+from backend.identity import theme
+from backend.identity.resolve import resolve_industry, suggest_industries
 from backend.agent.nodes.plan import rule_tools
 from backend.tools import registry
 from backend.tools.base import MSG
@@ -31,7 +32,8 @@ SYSTEM_PROMPT = """당신은 한국 주식 투자 보조 에이전트의 의도�
   | filing_qa(공시 원문에만 있는 서술 정보 질문: 사업 내용, 실적 전망·가이던스, 위험 요인, 경영진 분석, 지배구조 등. PER·ROE 같은 수치 지표는 lookup)
   예: "삼성전자 최근 실적 가이던스가 어땠어?" -> filing_qa, "삼성전자 PER 알려줘" -> lookup
 - reason: 한 줄 이유
-- industry: 사용자가 말한 산업 표현 원문 또는 null
+- industry: 사용자가 말한 산업 표현 원문 또는 null. 표현이 겹치면(예: "건설업 중 원자력 사업") 가장 구체적인 주제 표현을 쓴다. 산업 인식 방식에 대한 말(예: "산업으로 인식하지 말고")만 있고 새 주제가 없으면 null.
+- general_knowledge: 사용자가 산업 분류 대신 일반 지식으로 찾아 달라고 명시하면 true, 아니면 false. 직전에 되물은 뒤(last_status=asked)의 이런 요청은 chitchat이 아니라 screen 또는 refine
 - market: "KOSPI" | "KOSDAQ" | null (명시된 경우만)
 - base_date: "YYYY-MM-DD" | null (명시된 전체 날짜만, 상대 표현은 null)
 - constraints: [{"metric","op": ">=" 또는 "<=" 또는 null,"value": 숫자 또는 null,"ref": "industry_avg" 또는 null}]
@@ -73,6 +75,7 @@ class AnalyzeOut(BaseModel):
     intent: Intent
     reason: str = ""
     industry: str | None = None
+    general_knowledge: bool = False
     market: Market | None = None
     base_date: str | None = None
     constraints: list[_Con] = []
@@ -150,6 +153,16 @@ def _threshold_q(cond: Conditions, number_ambiguous: bool) -> str:
     return " ".join(parts)
 
 
+def _no_theme_q(text: str, failed: bool) -> str:
+    if failed:
+        return (f"‘{text}’ 산업을 인식하지 못했고 일반 지식 조회도 실패했습니다. 잠시 후 같은 주제를 "
+                "\"일반지식으로 찾아줘\"라고 다시 보내거나 산업 이름을 알려주세요.")
+    near = suggest_industries(text)
+    hint = f" 가까운 산업: {', '.join(near)}." if near else ""
+    return (f"‘{text}’는 산업 분류에서 찾지 못했고, 일반 지식으로도 DB에서 확인되는 국내 상장사를 찾지 못했습니다."
+            f"{hint} 산업 이름(예: 반도체, 2차전지)이나 회사명으로 다시 알려주세요.")
+
+
 def tool_specs() -> list[dict]:
     registry.load_all()
     return registry.describe()
@@ -192,7 +205,7 @@ async def analyze(state) -> dict:
     valid = [t for t in dict.fromkeys(o.tools) if registry.get(t)]  # 중복·미등록 제거
     unknown = len(set(o.tools)) - len(valid)
     new_cons, pending = _normalize(o)
-    extracted = bool(o.industry or new_cons or pending or o.bare_number is not None)
+    extracted = bool(o.industry or o.general_knowledge or new_cons or pending or o.bare_number is not None)
     intent: Intent = o.intent
     followup = last == "asked" and prev_intent in ("screen", "refine")
     if (last == "asked" and prev_intent in ("lookup", "report_save") and o.target_stock and not extracted
@@ -245,21 +258,40 @@ async def analyze(state) -> dict:
         cond["want_disclosures"] = o.want_disclosures
     elif "search_disclosures" in valid:
         cond["want_disclosures"] = True
-    industry_q = None
-    if o.industry:
+    industry_q, theme_ack = None, ""
+    text = o.industry or (theme.recall(sid) if o.general_knowledge else None) or cond["industry"]
+    if text:
         try:
-            r = await asyncio.to_thread(resolve_industry, o.industry)
+            r = await asyncio.to_thread(resolve_industry, text)
         except Exception:
             return fail("resolve_industry", "API_ERROR", MSG["API_ERROR"])
         if r["status"] == "ok":
-            cond["industry"] = o.industry
-        else:
+            cond["industry"] = text
+        elif r["status"] == "ambiguous":
             cond["industry"] = None
-            if r["status"] == "ambiguous":
-                industry_q = (f"‘{o.industry}’는 여러 산업으로 해석됩니다: "
-                              + ", ".join(x["term"] for x in r["options"]) + ". 어느 쪽인가요?")
+            industry_q = (f"‘{text}’는 여러 산업으로 해석됩니다: "
+                          + ", ".join(x["term"] for x in r["options"]) + ". 어느 쪽인가요?")
+        else:  # unknown → D2e 일반지식 폴백
+            codes, n_asked, hit, failed = [], 0, False, False
+            try:
+                codes, n_asked, hit = await theme.ensure(text)
+            except Exception as e:
+                failed = True
+                logger.warning("theme fallback failed type=%s", type(e).__name__)
+            bus.publish(sid, "llm_decision", LlmDecision(
+                kind="conditions", reason="theme_fallback_failed" if failed else "theme_fallback",
+                decision=f"theme={text[:40]}; asked={n_asked}; matched={len(codes)}; cache={'hit' if hit else 'miss'}"[:REASON_MAX]))
+            if codes:
+                cond["industry"] = text
+                theme.forget(sid)
+                theme_ack = (f"‘{text}’은(는) 산업 분류에 없어 AI 일반 지식으로 국내 상장사 {len(codes)}곳을 찾았습니다"
+                             "(공시로 검증된 분류 아님). ")
             else:
-                industry_q = f"‘{o.industry}’ 산업을 인식하지 못했습니다. 산업 이름을 다시 알려주세요."
+                cond["industry"] = None
+                theme.remember(sid, text)
+                industry_q = _no_theme_q(text, failed)
+    elif o.general_knowledge and cond["industry"] is None:
+        industry_q = "일반 지식으로 찾을 주제를 알려주세요. 예: 원자력 발전소 건설 기업"
     by_metric = {c["metric"]: c for c in cond["constraints"]}
     for c in new_cons:
         by_metric[c["metric"]] = c
@@ -285,6 +317,7 @@ async def analyze(state) -> dict:
     if cond["pending_metrics"] or not cond["constraints"] or number_ambiguous:
         missing.append("threshold")
     q = " ".join(p for p in (
+        (theme_ack.strip() or None) if "industry" not in missing and "threshold" in missing else None,
         (industry_q or "어떤 산업을 대상으로 할까요?") if "industry" in missing else None,
         _threshold_q(cond, number_ambiguous) if "threshold" in missing else None) if p)
     out["conditions"] = cond
