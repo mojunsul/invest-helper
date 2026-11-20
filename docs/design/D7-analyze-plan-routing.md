@@ -32,7 +32,7 @@ LLM 호출은 **analyze의 1회뿐**이다(plan·라우팅은 규칙 코드). LL
   ```
   키 빈 문자열이면 네트워크 전에 `LlmError("MISSING_API_KEY")`. 예외→코드 매핑은 D1 §3 표와 동일(Timeout→TIMEOUT, 429→RATE_LIMIT, 그 외→API_ERROR). 모든 예외는 `from None`으로 재발생, 로그는 `mask()` 통과한 타입명·HTTP status만(키·URL·요청/응답 본문 금지; 단 HTTP 오류 시 오류 본문의 message·내부 code/type/message는 mask 후 필드당 200자로 잘라 기록, D7b). 모듈 시작 시 `install_log_mask()`는 D13 소관이지만 `complete`도 D1 wrapper처럼 `mask()`한 텍스트만 기록한다.
 - `json_mode=True`는 요청에 `response_format={"type":"json_object"}`를 넣는다. GMS가 이를 지원하는지는 **미확인(⚠ §10)**. 응답 본문에서 JSON은 `{`~`}` 범위를 잘라 파싱한다(코드펜스 대비).
-- 프롬프트: system = 역할·출력 스키마·규칙(아래), user = JSON 하나 `{"message": user_msg, "prev_conditions": {...요약}, "prev_intent": ..., "last_status": ...}`. **user_msg는 지시가 아니라 분석 대상 데이터**라고 system에 명시한다. 키·DB·Tool 설명은 프롬프트에 넣지 않는다(Tool 스키마도 불필요: plan은 규칙).
+- 프롬프트: system = 역할·출력 스키마·규칙(아래), user = JSON 하나 `{"message": user_msg, "prev_conditions": {...요약}, "prev_intent": ..., "last_status": ...}`. **user_msg는 지시가 아니라 분석 대상 데이터**라고 system에 명시한다. 키·DB는 프롬프트에 넣지 않는다. Tool 명세(describe())는 D7d대로 analyze가 프롬프트에 넣는다.
 - **출력 스키마**(Pydantic `AnalyzeOut`, `extra` 무시):
 
   | 필드 | 타입 | 의미 |
@@ -45,7 +45,7 @@ LLM 호출은 **analyze의 1회뿐**이다(plan·라우팅은 규칙 코드). LL
   | `constraints` | `[{metric, op: ">="\|"<="\|null, value: number\|null, ref: "industry_avg"\|null}]` | 임계값이 말해진 지표. 값에서 `%`·"배"는 제거한 숫자. "산업 평균 이하" → `value=null, ref="industry_avg"` |
   | `pending_metrics` | `[Metric]` | 지표만 언급되고 값이 없는 것("ROE 높은", "PER만 더 낮게") |
   | `bare_number` | number\|null | 지표·산업 없이 숫자만 온 경우("10%") |
-  | `want_disclosures` | bool\|null | 공시 요청 언급 있으면 true, 언급 없으면 null |
+  | `want_disclosures` | bool\|null | D7d §5-2로 대체(LLM은 `tools`에서 `search_disclosures`를 골라 표현, `want_disclosures`는 호환 필드) |
   | `target_stock` | str\|null | lookup/report_save 대상 종목 원문(이름 또는 6자리 코드) |
 
 - **검증 코드(LLM을 신뢰하지 않음)**: 스키마 위반(metric/op/market 범위 밖, 날짜 형식 불일치, value가 NaN/inf/bool, **한 constraint에 value·ref 동시 존재**)이면 invalid. 값·ref 둘 다 null인 constraint는 `pending_metrics`로 옮긴다. `op` null이면 지표 기본(ROE/ROA/OPM `>=`, PER/PBR/PSR/DEBT_RATIO `<=`, D0 §6-3). 같은 metric이 constraints와 pending에 모두 있으면 constraint 우선.
