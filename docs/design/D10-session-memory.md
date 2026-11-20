@@ -18,7 +18,7 @@ class MemoryEntry(TypedDict):
     conditions: Conditions                 # 기본 default_conditions()
     last_intent: Intent | None             # state.prev_intent로 주입
     last_status: Status | None             # state.last_status로 주입
-    last_result_summary: dict | None       # {top_codes, pass_count} (D9 §5-8)
+    last_result_summary: dict | None       # {top_codes, pass_count, top[{code,name,values}]} (D9 §5-8, D18)
     report_draft: dict | None              # 종목코드 → draft (스키마 D12)
 
 _store: OrderedDict[str, MemoryEntry]      # 모듈 전역. 접근은 threading.Lock 보호(FastAPI sync 라우트 대비)
@@ -110,7 +110,7 @@ D10은 이벤트를 발행하지 않는다(요청 경계 이벤트는 analyze/re
 
 1. **DESIGN §7 / D0 §4 표에 한 줄 보강(낮은 위험)**: "analyze 실패(`intent` 미설정)로 끝난 요청은 메모리를 갱신하지 않는다"를 D0 §6-5 메모리 갱신 규칙에 추가. 현행 문구는 intent별만 규정해 이 경우가 비어 있다. 이 문서 §4는 이 보강을 전제로 동작한다(보강이 없어도 D10 동작만 영향이므로 구현 차단 아님).
 2. **DESIGN §7 저장소 문장 보강(문구)**: "세션 수 상한(LRU 퇴출)·TTL 없음, `memory.run_turn`이 요청 단위 state 생성·갱신을 소유"를 명시(현행은 "프로세스 메모리 dict"만). D0 §4 "초기 state에 `conditions`는 항상 존재" 문장 추가도 함께 제안(plan/respond 직접 인덱싱 전제를 계약으로 고정).
-3. 그 외 D0·DESIGN 수정 요청 없음. D0 §6-10(PER 분포 역산 미지원)은 승인된 상태 그대로 유지하며 `last_result_summary` 확장은 하지 않는다.
+3. 그 외 D0·DESIGN 수정 요청 없음. D0 §6-10(PER 분포 역산 미지원)은 승인된 상태 그대로 유지하며 `last_result_summary` 확장은 D18에서 수행(memory.py는 변경 없음, analyze가 `prev_result`로 읽음).
 
 ## 변경 이력
 

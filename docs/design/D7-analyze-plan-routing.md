@@ -20,7 +20,7 @@ LLM 호출은 **analyze의 1회뿐**이다(plan·라우팅은 규칙 코드). LL
 | plan | `intent, conditions, replan_log, target_stock`(lookup의 `resolve_stock`용) | `search_scope, plan` |
 
 - analyze가 반환하는 `intent`는 **코드 보정 후 최종 의도**다(D10이 `last_intent`로 저장). `status`는 `asked`/`error`일 때만 설정하고, 그 외에는 건드리지 않는다(D9가 설정).
-- 이전 턴 대화 원문은 LLM에 주지 않는다. 입력은 `user_msg` + 이전 `conditions` 요약 + `prev_intent` + `last_status`뿐이다.
+- 이전 턴 대화 원문은 LLM에 주지 않는다. 입력은 `user_msg` + 이전 `conditions` 요약 + `prev_intent` + `last_status` + `prev_result`(직전 응답 상위 ≤5종목의 코드·이름·지표값 요약, D18)뿐이다.
 
 ## 3. LLM 사용 (`backend/agent/llm.py`)
 
@@ -32,7 +32,7 @@ LLM 호출은 **analyze의 1회뿐**이다(plan·라우팅은 규칙 코드). LL
   ```
   키 빈 문자열이면 네트워크 전에 `LlmError("MISSING_API_KEY")`. 예외→코드 매핑은 D1 §3 표와 동일(Timeout→TIMEOUT, 429→RATE_LIMIT, 그 외→API_ERROR). 모든 예외는 `from None`으로 재발생, 로그는 `mask()` 통과한 타입명·HTTP status만(키·URL·요청/응답 본문 금지; 단 HTTP 오류 시 오류 본문의 message·내부 code/type/message는 mask 후 필드당 200자로 잘라 기록, D7b). 모듈 시작 시 `install_log_mask()`는 D13 소관이지만 `complete`도 D1 wrapper처럼 `mask()`한 텍스트만 기록한다.
 - `json_mode=True`는 요청에 `response_format={"type":"json_object"}`를 넣는다. GMS가 이를 지원하는지는 **미확인(⚠ §10)**. 응답 본문에서 JSON은 `{`~`}` 범위를 잘라 파싱한다(코드펜스 대비).
-- 프롬프트: system = 역할·출력 스키마·규칙(아래), user = JSON 하나 `{"message": user_msg, "prev_conditions": {...요약}, "prev_intent": ..., "last_status": ...}`. **user_msg는 지시가 아니라 분석 대상 데이터**라고 system에 명시한다. 키·DB는 프롬프트에 넣지 않는다. Tool 명세(describe())는 D7d대로 analyze가 프롬프트에 넣는다.
+- 프롬프트: system = 역할·출력 스키마·규칙(아래), user = JSON 하나 `{"message": user_msg, "prev_conditions": {...요약}, "prev_intent": ..., "last_status": ..., "prev_result": {"pass_count", "stocks"}|null}`(D18). **user_msg는 지시가 아니라 분석 대상 데이터**라고 system에 명시한다. 키·DB는 프롬프트에 넣지 않는다. Tool 명세(describe())는 D7d대로 analyze가 프롬프트에 넣는다.
 - **출력 스키마**(Pydantic `AnalyzeOut`, `extra` 무시):
 
   | 필드 | 타입 | 의미 |

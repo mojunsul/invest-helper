@@ -368,7 +368,11 @@ async def _screen(state, status, out) -> str:
         out["report_draft"] = {c: _drafts_base(state, c, state["metrics"][c], state.get("industry_avg") or {},
                                                (state.get("disclosures") or {}).get(c, []) if cond.get("want_disclosures") else None, bd)
                                for c in codes if c in (state.get("metrics") or {})}
-        out["last_result_summary"] = {"top_codes": codes[:TOP_N], "pass_count": p}
+        top = codes[:TOP_N]
+        out["last_result_summary"] = {"top_codes": top, "pass_count": p, "top": [
+            {"code": c, "name": _name(state, c)[:30],
+             "values": {k: round(v, 2) for k, v in ((state.get("metrics") or {}).get(c, {}).get("values") or {}).items()
+                        if v is not None}} for c in top]}
     elif status == "limit":
         lines += ["", "충족 종목이 없습니다.", *_limit_lines(state)]
         ex = _excluded(state)
@@ -377,7 +381,7 @@ async def _screen(state, status, out) -> str:
         q = f"조건을 완화할까요? 완화할 지표와 기준값을 알려주세요. (현재: {_cons_text(cond)})"
         lines += ["", q]
         out["clarify_question"] = q
-        out["last_result_summary"] = {"top_codes": [], "pass_count": 0}
+        out["last_result_summary"] = {"top_codes": [], "pass_count": 0, "top": []}
     else:
         lines = [error_text(state), *_replan_lines(state)]
     fn = _fin_note(state)

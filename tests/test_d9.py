@@ -215,7 +215,9 @@ def test_answered_table_and_sections(ev, monkeypatch):
     assert "B(000002): ROE 8.20% (기준 ≥ 10.00%) · 판단불가: 재무정보 없음" in a
     assert "C(000003): 재무정보 없음, 조회 실패" in a and "D(000004)" not in a
     assert "5/100" not in a and "10/100종목" in a  # pending+failed
-    assert o["last_result_summary"] == {"top_codes": ["000001"], "pass_count": 1}
+    ls = o["last_result_summary"]
+    assert ls["top_codes"] == ["000001"] and ls["pass_count"] == 1
+    assert [(t["code"], t["name"]) for t in ls["top"]] == [("000001", "A|x")] and ls["top"][0]["values"]["ROE"] == 20.0
     d = o["report_draft"]["000001"]
     assert set(d) == {"stock_code", "stock_name", "base_date", "metrics", "industry_avg", "disclosures"}
     assert d["disclosures"] == [] and list(o["report_draft"]) == ["000001"]
@@ -246,7 +248,7 @@ def test_limit(ev):
     assert "ROE: 후보 중 최고 15.00% (기준 ≥ 25.00%)" in a and "PER: 후보 중 최저 4.00배 (기준 ≤ -)" in a
     assert "조건을 완화할까요?" in a and o["clarify_question"].startswith("조건을 완화할까요?")
     assert "재계획 0회" not in a and "재계획 이력" in a and "limit_up" not in a
-    assert o["last_result_summary"] == {"top_codes": [], "pass_count": 0} and "report_draft" not in o
+    assert o["last_result_summary"] == {"top_codes": [], "pass_count": 0, "top": []} and "report_draft" not in o
     assert "재계획 3회" in rs.__dict__.get("x", "재계획 3회")  # 템플릿 문구는 아래 요약 테스트에서 확인
 
 

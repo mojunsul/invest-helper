@@ -146,8 +146,8 @@ analyze ─┬─(chitchat)─────────────────�
 
 ## 7. 대화 맥락 (F3010)
 
-- 세션 메모리 = `{conditions, last_intent, last_status, last_result_summary(상위 종목코드·충족 개수), report_draft}`. Tool 원본 응답은 보관하지 않는다. AgentState는 요청마다 새로 만들어 메모리로 채우며 `tool_cache`는 요청 간 유지하지 않는다(재계획 내에서만 재사용).
-- `refine`: 새로 추출된 필드만 덮어쓴다("PER만 더 낮게" → 산업·ROE 유지, PER 임계값만 갱신; constraints는 metric 단위 덮어쓰기). 단 **추정한 새 임계값**은 만들지 않고 "현재 PER 상한 X → 얼마로 낮출까요?"로 되묻는다. 직전 결과 PER 분포 역산은 `last_result_summary`에 지표 값이 없어 이번 범위에서 미지원(되묻기만).
+- 세션 메모리 = `{conditions, last_intent, last_status, last_result_summary(상위 5종목의 코드·이름·지표값, 충족 개수; analyze가 지시어 해석용 `prev_result`로 읽음), report_draft}`. Tool 원본 응답은 보관하지 않는다. AgentState는 요청마다 새로 만들어 메모리로 채우며 `tool_cache`는 요청 간 유지하지 않는다(재계획 내에서만 재사용).
+- `refine`: 새로 추출된 필드만 덮어쓴다("PER만 더 낮게" → 산업·ROE 유지, PER 임계값만 갱신; constraints는 metric 단위 덮어쓰기). 단 **추정한 새 임계값**은 만들지 않고 "현재 PER 상한 X → 얼마로 낮출까요?"로 되묻는다. 직전 결과 PER 분포 역산은 이번 범위에서 미지원(되묻기만).
 - 후속 병합: 직전 status가 asked(+`prev_intent`∈screen/refine)이면 후속 병합, 새 screen은 conditions 전체 초기화, chitchat·filing_qa는 메모리 불변. `lookup/report_save`는 `target_stock`을 쓰고 조건 불변. 상세는 `docs/design/D0-contract.md`.
 - 저장소: 프로세스 메모리 dict(키=session_id). 서버 재시작 시 소실 — 이번 범위에서는 감수.
 

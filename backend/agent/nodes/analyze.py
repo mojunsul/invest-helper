@@ -47,7 +47,9 @@ SYSTEM_PROMPT = """당신은 한국 주식 투자 보조 에이전트의 의도�
       "반도체 ROE 10% 이상" -> ["find_stock_candidates","get_financials"] (공시를 요청하지 않으면 search_disclosures 제외)
       "삼성전자 PER 알려줘" -> ["get_financials"], "안녕" -> []
 - target_stock: lookup/report_save/filing_qa 대상 종목의 이름 또는 6자리 코드 원문, 아니면 null
-입력은 JSON {"message","prev_conditions","prev_intent","last_status"} 입니다."""
+- prev_result는 직전 응답의 충족 종목(최대 5) 요약이다. 사용자가 '그 중/방금 나온/첫 번째/PER 가장 낮은 종목' 등 지시어로 가리키면 prev_result.stocks에서 골라 그 종목의 6자리 코드를 target_stock에 쓰고 intent는 lookup(재무·지표) / report_save / filing_qa(공시 내용·사업·위험)로 정한다. 지시어가 없으면 prev_result를 쓰지 않는다.
+- 지시어가 prev_result에 없는 대상(예: 6번째, 목록 밖)이거나 prev_result가 null이면 target_stock=null로 둔다.
+입력은 JSON {"message","prev_conditions","prev_intent","last_status","prev_result"} 입니다."""
 
 
 def _no_bool(v):
@@ -194,7 +196,10 @@ async def analyze(state) -> dict:
         bus.publish(sid, "stage_end", StageEnd(stage="analyze", intent=None, reason=None))
         return {"status": "error", "errors": errors}
 
-    payload = {"message": msg, "prev_conditions": prev_c, "prev_intent": prev_intent, "last_status": last}
+    s = state.get("last_result_summary")
+    prev_result = {"pass_count": s.get("pass_count"), "stocks": s.get("top") or []} if s else None
+    payload = {"message": msg, "prev_conditions": prev_c, "prev_intent": prev_intent, "last_status": last,
+               "prev_result": prev_result}
     try:
         o = await _ask_llm(payload)
     except llm.LlmError as e:

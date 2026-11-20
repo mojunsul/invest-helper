@@ -218,7 +218,7 @@ screen/refine에서 후보를 조회한 경로(answered/limit/error의 후보 �
 
 ### 5-8. 부가 필드 (D10·D12가 읽음)
 
-- `last_result_summary = {"top_codes": [충족 종목 코드 상위 TOP_N], "pass_count": n_pass}` — screen/refine의 `answered`·`limit`(limit은 `[]`, 0)에서만 갱신(D0 §6-5: 새 결과가 생길 때만). error/asked/lookup/report_save/chitchat은 반환하지 않아 D10이 이전 값을 유지.
+- `last_result_summary = {"top_codes": [충족 종목 코드 상위 TOP_N], "pass_count": n_pass, "top": [{code, name(≤30자), values{metric: float(2자리, None 제외)}}]}`(D18; limit은 `[]`, 0, `[]`) — screen/refine의 `answered`·`limit`(limit은 `[]`, 0)에서만 갱신(D0 §6-5: 새 결과가 생길 때만). error/asked/lookup/report_save/chitchat은 반환하지 않아 D10이 이전 값을 유지.
 - `report_draft`(제안 형태, 스키마 확정은 D12 — §9 요청 2): **종목코드 → draft dict** 맵. draft = `{stock_code, stock_name, base_date(시세 기준일 또는 None), metrics: MetricRow(values·fiscal_period·actual_basis·estimated), industry_avg(dict, lookup은 {}), disclosures(list|None; None=조회 안 함)}` — DESIGN §8 `reports` 컬럼과 1:1. screen/refine `answered`: 충족 종목 전부로 **통째 교체**. lookup `answered`: 이전 `report_draft`(D10 주입)에 해당 종목을 **병합**. 그 외는 반환하지 않음(이전 값 유지). 값은 코드가 state에서 복사하며 LLM·클라이언트는 관여하지 않는다(DESIGN §9).
 - lookup 표시명: `to_thread(resolve_stock, code)` 결과 `matches[0].name`, 실패하면 코드만 표시. lookup 본문 = 종목·재무기준(`*`)·7개 지표 줄(값 또는 `MetricRow.reasons` 사유; 시총 없음은 PER/PBR/PSR이 "시가총액 확인 불가").
 - **asked**: `answer = clarify_question`(analyze 작성; None이면 "추가 정보가 필요합니다.") + 면책. **chitchat**: 고정 안내 템플릿("투자 도우미입니다. 산업과 지표 조건으로 종목을 찾거나(예: 반도체 중 ROE 10% 이상 PER 산업 평균 이하), 종목의 재무 지표를 조회할 수 있습니다.") + 면책. 둘 다 LLM 미사용.

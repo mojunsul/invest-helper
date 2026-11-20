@@ -299,7 +299,7 @@ def test_prompt_has_no_prev_dialog_and_key(env):
     msgs = env[0]["msgs"][0]
     assert KEY not in json.dumps(msgs)
     u = json.loads(msgs[1]["content"])
-    assert set(u) == {"message", "prev_conditions", "prev_intent", "last_status"}
+    assert set(u) == {"message", "prev_conditions", "prev_intent", "last_status", "prev_result"}
 
 
 # ---------- plan ----------
@@ -581,7 +581,7 @@ def test_d7d_prompt_has_describe_and_payload_keys(env, tools_loaded):
     go(env, OUT("chitchat"))
     msgs = env[0]["msgs"][0]
     assert json.dumps(registry.describe(), ensure_ascii=False) in msgs[0]["content"]
-    assert set(json.loads(msgs[1]["content"])) == {"message", "prev_conditions", "prev_intent", "last_status"}
+    assert set(json.loads(msgs[1]["content"])) == {"message", "prev_conditions", "prev_intent", "last_status", "prev_result"}
 
 
 def test_d7d_unknown_and_dup_removed(env, tools_loaded):
