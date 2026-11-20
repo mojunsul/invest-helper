@@ -1,6 +1,6 @@
 # 기획 검증 결과 (명세 8.7)
 
-이 문서는 `invest-helper.md` §8.7 "기획 검증"의 항목별 결과다. 8.7은 원래 구현 전에 하는 검증이며, 이 프로젝트에는 **구현 당시의 호출 기록이 따로 남아 있지 않다.** 그래서 아래는 구현 후(2026-11-20) 저장소에 남은 실호출 기록(`representative-requests.md`, `D17-rag-comparison.md`, `logs/*.json`)과 설계·테스트 문서를 **열어 대조한 결과**이며, 이번 정비에서 외부 API를 다시 호출하지 않았다. 기록이 없는 항목은 `미확인`으로 적는다.
+이 문서는 `invest-helper.md` §8.7 "기획 검증"의 항목별 결과다. 8.7은 원래 구현 전에 하는 검증이며, 이 프로젝트에는 **구현 당시의 호출 기록이 따로 남아 있지 않다.** 그래서 아래는 구현 후(2026-11-20) 저장소에 남은 실호출 기록(`representative-requests.md`, `D17-rag-comparison.md`, `logs/*.json`)과 설계·테스트 문서를 **열어 대조한 결과**이며, D24에서 최소 실호출(채팅 2건, 2026-11-20)을 수행했다(아래 1-1·`representative-requests.md` "실호출 브라우저 E2E(D24)"). 그 밖의 항목은 기록 대조만 했다. 기록이 없는 항목은 `미확인`으로 적는다.
 
 ## 1. 도메인 조건 확인
 
@@ -8,11 +8,11 @@
 
 | 출처 | 확인 근거 | 상태 |
 |---|---|---|
-| 공공데이터포털 금융위 주식시세·기업 재무정보 | 대표 요청 1~3 실행 로그에서 `find_stock_candidates`(시세)·`get_financials`(재무)가 `ok`로 응답(`logs/rep1-one-shot.json`, `rep2-replan.json`, `rep3-replan.json`; 시세 기준일 2026-11-18, 재무 FY2025) | 구현 후 실호출 성립 확인(2026-11-20) |
-| OpenDART | 공시 원문 색인(`D17-rag-comparison.md` §1: 8종목 8/8 색인) | 구현 후 실호출 성립 확인(2026-11-20) |
-| SSAFY GMS(claude-haiku-5-5) | 대표 요청 1의 `llm_decision` 이벤트 4건(intent·tools·conditions·summary), `rep1-one-shot.json` | 구현 후 실호출 성립 확인(2026-11-20) |
+| 공공데이터포털 금융위 주식시세·기업 재무정보 | 대표 요청 1~3 실행 로그에서 `find_stock_candidates`(시세)·`get_financials`(재무)가 `ok`로 응답(`logs/rep1-one-shot.json`, `rep2-replan.json`, `rep3-replan.json`; 시세 기준일 2026-11-18, 재무 FY2025) | 구현 후 실호출 성립 확인(2026-11-20). 2026-11-20 브라우저 E2E(D24, 채팅 2건)로 재확인: 시세 `find_stock_candidates` 1회·재무 `get_financials` 7회(공공데이터 HTTP 25건, 전부 200) |
+| OpenDART | 공시 원문 색인(`D17-rag-comparison.md` §1: 8종목 8/8 색인) | 구현 후 실호출 성립 확인(2026-11-20). 2026-11-20 브라우저 E2E(D24 요청 C)로 재확인: `search_disclosures` 2회(DN오토모티브·세방전지, 공시 3건씩), OpenDART HTTP 2건 200 |
+| SSAFY GMS(claude-haiku-5-5) | 대표 요청 1의 `llm_decision` 이벤트 4건(intent·tools·conditions·summary), `rep1-one-shot.json` | 구현 후 실호출 성립 확인(2026-11-20). 2026-11-20 브라우저 E2E(D24)로 재확인: GMS HTTP 4건 전부 200, `llm_decision`(intent·tools·conditions·summary) 이벤트 기록 |
 
-- **키 발급 당일(1일차 16시까지) 호출을 확인한 기록은 저장소에 없다 → 미확인.** 그 시점의 확인은 소급해서 쓰지 않는다. 이후 구현이 끝난 뒤 위 실호출로 3종이 모두 성립함을 확인했다.
+- **키 발급 당일(1일차 16시까지) 호출을 확인한 기록은 저장소에 없다 → 미확인.** 그 시점의 확인은 소급해서 쓰지 않는다. 발급 당일 기록은 없다(미확인). 2026-11-20 브라우저 실호출 E2E(D24, 채팅 2건)에서 시세·재무(공공데이터)·공시(OpenDART)·LLM(GMS) 호출 성립을 확인했다(`representative-requests.md` 해당 절). 이는 발급 당일 확인을 대체하지 않는다. 이후 구현이 끝난 뒤 위 실호출로 3종이 모두 성립함을 확인했다.
 - 출처·이용 조건·호출 한도는 README §7(확인일 2026-11-20)에 기록했다. GMS의 한도·약관과 OpenDART 일일 한도의 공식 수치는 그쪽에도 `미확인`으로 적혀 있다.
 
 ### 1-2. 'LLM만으로 답하면 무엇이 틀리는가' (대표 요청별 한 줄)
@@ -38,10 +38,10 @@
 
 - **LLM 호출 성공(API 키·접속 주소·환경변수 로딩)**: 대표 요청 1·2·3 실행에서 GMS(claude-haiku-5-5) 호출이 성공했고 응답이 `llm_decision` 이벤트로 남았다(`logs/rep1-one-shot.json` seq 2~4·55, `representative-requests.md`).
 - **Tool 명세를 넘겼을 때 LLM의 Tool 선택**: 요청 1의 `llm_decision`(kind=tools, decision=`find_stock_candidates,get_financials`, 검증 결과 `unknown=0; match=yes`), 공시 원문 질문에서 `search_filing_text`가 선택된 라우팅은 `D17-rag-comparison.md` §3(질문 ①~③ 모두 intent=filing_qa, `search_filing_text` 호출)와 `docs/design/D17-filing-rag.md` §7.
-- 이번 정비에서 LLM을 다시 호출해 재확인하지 않았다. 위는 저장된 실행 로그·문서 내용을 대조한 결과다.
+- D24 실호출(2026-11-20) 요청 C(`logs/live-c-screen-disclosure.json` seq 2~4)에서 LLM이 intent=screen, tools=`find_stock_candidates,get_financials,search_disclosures`(`unknown=0; match=yes`)를 선택하고 공시 요청을 추출했음을 `llm_decision`으로 확인했다. 그 외 위 항목은 저장된 실행 로그·문서 내용을 대조한 결과다.
 
 ## 4. 설계 시험
 
 - **대표 요청 하나를 단계·Tool 순서대로 따라가기**: 요청 1(`logs/rep1-one-shot.json`)에서 `find_stock_candidates`(입력 `industry=반도체`는 analyze 결과)가 후보 20건을 돌려주고, 그 종목코드(`000660`, `000990`, `080220`, `440110`, `067310` …)가 그대로 `get_financials` 입력 `stock_code` 20건으로 전달됨을 확인(seq 9, 11~). 단계는 analyze → plan → execute → judge → respond.
 - **재계획 조건과 상한**: 요청 2(`logs/rep2-replan.json`)는 충족 0 후 `market_expand` 1회(`trigger=no_pass`)로 충족, 요청 3(`logs/rep3-replan.json`)은 `market_expand → similar_industry → limit_up` 3회로 REPLAN_MAX=3에 도달해 `status=limit`로 되묻기. 조건·상한 정의는 `docs/DESIGN.md` §4, `tests/test_d9.py`.
-- 대표 요청 4·5의 session_id는 기록에 없다(`representative-requests.md`에도 "미기록"). 그대로 `미기록`으로 둔다.
+- 대표 요청 4·5의 session_id는 기록에 없다(`representative-requests.md`에도 "미기록"). 원 기록으로는 `미기록`이며, DB 대조로 추정 일치한 세션은 `representative-requests.md`에 "추정"으로만 병기했다.

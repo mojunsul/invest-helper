@@ -1,0 +1,431 @@
+{
+ "request": "KOSPI 2차전지 중 ROE 5% 넘는 종목, 공시도 같이 보여줘",
+ "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+ "elapsed_s": 7.04,
+ "elapsed_note": "run_logs 첫 이벤트~final ts 차이(서버측). 브라우저에서 POST /api/chat 응답까지 8.4s(네트워크 기록)",
+ "response": null,
+ "response_note": "브라우저가 받은 /api/chat 응답 본문은 저장하지 못했다(캡처 27-chat-live-screen-disclosure.png의 화면 렌더로 확인). rep*.json과 달리 response 칸 없음",
+ "run_log": [
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 1,
+   "ts": "2026-11-20T07:05:43.719Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "analyze"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 2,
+   "ts": "2026-11-20T07:05:46.047Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "intent",
+    "decision": "screen",
+    "reason": "KOSPI 2차전지 산업에서 ROE 조건으로 종목을 찾고 공시도 요청함"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 3,
+   "ts": "2026-11-20T07:05:46.050Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "tools",
+    "decision": "find_stock_candidates,get_financials,search_disclosures",
+    "reason": "llm=find_stock_candidates,get_financials,search_disclosures; unknown=0; match=yes"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 4,
+   "ts": "2026-11-20T07:05:46.052Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "conditions",
+    "decision": "industry=2차전지; ROE>=5; pending=[]; missing=[]",
+    "reason": "new_screen"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 5,
+   "ts": "2026-11-20T07:05:46.055Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "analyze",
+    "intent": "screen",
+    "reason": "KOSPI 2차전지 산업에서 ROE 조건으로 종목을 찾고 공시도 요청함"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 6,
+   "ts": "2026-11-20T07:05:46.059Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "plan"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 7,
+   "ts": "2026-11-20T07:05:46.061Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "plan",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 8,
+   "ts": "2026-11-20T07:05:46.064Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "execute"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 9,
+   "ts": "2026-11-20T07:05:46.066Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "find_stock_candidates",
+    "input": {
+     "industry": "2차전지",
+     "market": "KOSPI"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 10,
+   "ts": "2026-11-20T07:05:47.070Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "find_stock_candidates",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1000,
+    "summary": "후보 6건, 기준일 2026-11-19"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 11,
+   "ts": "2026-11-20T07:05:47.072Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "373220"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 12,
+   "ts": "2026-11-20T07:05:47.075Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "006400"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 13,
+   "ts": "2026-11-20T07:05:47.077Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "066970"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 14,
+   "ts": "2026-11-20T07:05:47.079Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "007340"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 15,
+   "ts": "2026-11-20T07:05:47.081Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "450080"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 16,
+   "ts": "2026-11-20T07:05:48.173Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1097,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 17,
+   "ts": "2026-11-20T07:05:48.177Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "004490"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 18,
+   "ts": "2026-11-20T07:05:48.281Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1206,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 19,
+   "ts": "2026-11-20T07:05:48.359Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1279,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 20,
+   "ts": "2026-11-20T07:05:48.474Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1393,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 21,
+   "ts": "2026-11-20T07:05:48.556Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 1474,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 22,
+   "ts": "2026-11-20T07:05:48.892Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 711,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 23,
+   "ts": "2026-11-20T07:05:48.899Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "execute",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 24,
+   "ts": "2026-11-20T07:05:48.903Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "judge"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 25,
+   "ts": "2026-11-20T07:05:48.907Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "search_disclosures",
+    "input": {
+     "stock_code": "007340"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 26,
+   "ts": "2026-11-20T07:05:48.909Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "search_disclosures",
+    "input": {
+     "stock_code": "004490"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 27,
+   "ts": "2026-11-20T07:05:48.997Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "search_disclosures",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 87,
+    "summary": "공시 3건"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 28,
+   "ts": "2026-11-20T07:05:49.592Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "search_disclosures",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 680,
+    "summary": "공시 3건"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 29,
+   "ts": "2026-11-20T07:05:49.595Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "judge",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 30,
+   "ts": "2026-11-20T07:05:49.599Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "respond"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 31,
+   "ts": "2026-11-20T07:05:50.746Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "summary",
+    "decision": "llm",
+    "reason": "ok"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 32,
+   "ts": "2026-11-20T07:05:50.753Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "respond",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "seq": 33,
+   "ts": "2026-11-20T07:05:50.756Z",
+   "type": "final",
+   "payload": {
+    "status": "answered"
+   },
+   "run": 1
+  }
+ ]
+}

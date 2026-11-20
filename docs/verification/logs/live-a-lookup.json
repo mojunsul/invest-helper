@@ -1,0 +1,206 @@
+{
+ "request": "삼성전자 ROE랑 PER 알려줘",
+ "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+ "elapsed_s": 2.58,
+ "elapsed_note": "run_logs 첫 이벤트~final ts 차이(서버측). 브라우저 wall 4.2s(폴링 포함)",
+ "response": null,
+ "response_note": "브라우저가 받은 /api/chat 응답 본문은 저장하지 못했고 화면 렌더(DOM 텍스트)는 캡처 27-chat-live-lookup.png로 확인",
+ "run_log": [
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 1,
+   "ts": "2026-11-20T07:08:20.501Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "analyze"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 2,
+   "ts": "2026-11-20T07:08:21.737Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "intent",
+    "decision": "lookup",
+    "reason": "특정 종목(삼성전자)의 ROE·PER 수치 지표 조회 요청"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 3,
+   "ts": "2026-11-20T07:08:21.743Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "tools",
+    "decision": "get_financials",
+    "reason": "llm=get_financials; unknown=0; match=yes"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 4,
+   "ts": "2026-11-20T07:08:21.745Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "conditions",
+    "decision": "industry=None; ; pending=[]; missing=[]",
+    "reason": "lookup"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 5,
+   "ts": "2026-11-20T07:08:21.747Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "analyze",
+    "intent": "lookup",
+    "reason": "특정 종목(삼성전자)의 ROE·PER 수치 지표 조회 요청"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 6,
+   "ts": "2026-11-20T07:08:21.751Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "plan"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 7,
+   "ts": "2026-11-20T07:08:21.760Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "plan",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 8,
+   "ts": "2026-11-20T07:08:21.762Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "execute"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 9,
+   "ts": "2026-11-20T07:08:21.764Z",
+   "type": "tool_call",
+   "payload": {
+    "tool": "get_financials",
+    "input": {
+     "stock_code": "005930"
+    },
+    "cache_hit": false
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 10,
+   "ts": "2026-11-20T07:08:22.093Z",
+   "type": "tool_result",
+   "payload": {
+    "tool": "get_financials",
+    "ok": true,
+    "error_code": null,
+    "duration_ms": 328,
+    "summary": "FY2025, 추정=아니오"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 11,
+   "ts": "2026-11-20T07:08:22.096Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "execute",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 12,
+   "ts": "2026-11-20T07:08:22.104Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "judge"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 13,
+   "ts": "2026-11-20T07:08:22.108Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "judge",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 14,
+   "ts": "2026-11-20T07:08:22.111Z",
+   "type": "stage_start",
+   "payload": {
+    "stage": "respond"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 15,
+   "ts": "2026-11-20T07:08:23.074Z",
+   "type": "llm_decision",
+   "payload": {
+    "kind": "summary",
+    "decision": "llm",
+    "reason": "ok"
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 16,
+   "ts": "2026-11-20T07:08:23.077Z",
+   "type": "stage_end",
+   "payload": {
+    "stage": "respond",
+    "intent": null,
+    "reason": null
+   },
+   "run": 1
+  },
+  {
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "seq": 17,
+   "ts": "2026-11-20T07:08:23.079Z",
+   "type": "final",
+   "payload": {
+    "status": "answered"
+   },
+   "run": 1
+  }
+ ]
+}

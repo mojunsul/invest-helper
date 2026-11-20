@@ -1,0 +1,207 @@
+{
+ "note": "2026-11-20 실호출 브라우저 E2E(실서버 127.0.0.1:8765, DB 사본). 헤드리스 Chrome CDP Network 이벤트에서 method·path·status·소요 ms만 저장(쿼리·헤더·본문 없음). 브라우저 DevTools 네트워크 탭 화면 캡처가 아님. 프런트엔드는 /api/logs를 호출하지 않으며, 실행 A의 /api/logs/{sid}는 사람이 주소를 직접 연 것과 같은 방식(탭에서 직접 이동)으로 확인한 요청이다. 실행 C에서는 /api/logs를 열지 않았다(세션 id를 화면에서 읽지 못해, 서버 응답 확인은 별도 GET으로 함)",
+ "runs": [
+  {
+   "run": "C",
+   "question": "KOSPI 2차전지 중 ROE 5% 넘는 종목, 공시도 같이 보여줘",
+   "session_id": "5c5cdfb5-db6a-439c-b795-9cc69074e421",
+   "browser_wall_s": 9.2,
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/",
+     "status": 200,
+     "ms": 46
+    },
+    {
+     "method": "GET",
+     "path": "/style.css",
+     "status": 200,
+     "ms": 37
+    },
+    {
+     "method": "GET",
+     "path": "/common.js",
+     "status": 200,
+     "ms": 46
+    },
+    {
+     "method": "GET",
+     "path": "/chat.js",
+     "status": 200,
+     "ms": 41
+    },
+    {
+     "method": "GET",
+     "path": "/favicon.ico",
+     "status": 404,
+     "ms": 12
+    },
+    {
+     "method": "GET",
+     "path": "/",
+     "status": 200,
+     "ms": 6
+    },
+    {
+     "method": "GET",
+     "path": "/style.css",
+     "status": 200,
+     "ms": 0
+    },
+    {
+     "method": "GET",
+     "path": "/common.js",
+     "status": 200,
+     "ms": 0
+    },
+    {
+     "method": "GET",
+     "path": "/chat.js",
+     "status": 200,
+     "ms": 0
+    },
+    {
+     "method": "POST",
+     "path": "/api/chat",
+     "status": 200,
+     "ms": 8398
+    },
+    {
+     "method": "GET",
+     "path": "/reports.html",
+     "status": 200,
+     "ms": 5
+    },
+    {
+     "method": "GET",
+     "path": "/style.css",
+     "status": 200,
+     "ms": 2
+    },
+    {
+     "method": "GET",
+     "path": "/common.js",
+     "status": 200,
+     "ms": 2
+    },
+    {
+     "method": "GET",
+     "path": "/reports.js",
+     "status": 200,
+     "ms": 5
+    },
+    {
+     "method": "GET",
+     "path": "/api/reports",
+     "status": 200,
+     "ms": 8
+    }
+   ]
+  },
+  {
+   "run": "A",
+   "question": "삼성전자 ROE랑 PER 알려줘",
+   "session_id": "c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+   "browser_wall_s": 4.2,
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/",
+     "status": 200,
+     "ms": 32
+    },
+    {
+     "method": "GET",
+     "path": "/style.css",
+     "status": 200,
+     "ms": 20
+    },
+    {
+     "method": "GET",
+     "path": "/common.js",
+     "status": 200,
+     "ms": 24
+    },
+    {
+     "method": "GET",
+     "path": "/chat.js",
+     "status": 200,
+     "ms": 24
+    },
+    {
+     "method": "GET",
+     "path": "/favicon.ico",
+     "status": 404,
+     "ms": 4
+    },
+    {
+     "method": "GET",
+     "path": "/",
+     "status": 200,
+     "ms": 4
+    },
+    {
+     "method": "GET",
+     "path": "/style.css",
+     "status": 200,
+     "ms": 0
+    },
+    {
+     "method": "GET",
+     "path": "/common.js",
+     "status": 200,
+     "ms": 0
+    },
+    {
+     "method": "GET",
+     "path": "/chat.js",
+     "status": 200,
+     "ms": 0
+    },
+    {
+     "method": "POST",
+     "path": "/api/chat",
+     "status": 200,
+     "ms": 3534
+    },
+    {
+     "method": "GET",
+     "path": "/reports.html",
+     "status": 200,
+     "ms": 6
+    },
+    {
+     "method": "GET",
+     "path": "/style.css",
+     "status": 200,
+     "ms": 1
+    },
+    {
+     "method": "GET",
+     "path": "/common.js",
+     "status": 200,
+     "ms": 1
+    },
+    {
+     "method": "GET",
+     "path": "/reports.js",
+     "status": 200,
+     "ms": 5
+    },
+    {
+     "method": "GET",
+     "path": "/api/reports",
+     "status": 200,
+     "ms": 5
+    },
+    {
+     "method": "GET",
+     "path": "/api/logs/c0bbaf94-da50-4f20-a61f-fe4590e61d5e",
+     "status": 200,
+     "ms": 9
+    }
+   ]
+  }
+ ]
+}
